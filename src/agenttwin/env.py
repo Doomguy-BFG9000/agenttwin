@@ -9,7 +9,6 @@ replayer, and the replayer never touches a real llm or a real tool.
 from __future__ import annotations
 
 import copy
-import inspect
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -38,7 +37,7 @@ _UNSET: Any = object()
 
 
 class Twin:
-    """CONTRACTS 9.2 -- the two entry points of the whole library."""
+    """CONTRACTS 9.2 -- the entry points of the whole library (section 3)."""
 
     @classmethod
     def record(
@@ -90,6 +89,25 @@ class Twin:
             model=model,
             allow_fingerprint_drift=allow_fingerprint_drift,
         )
+
+    @classmethod
+    def from_openai_compatible(cls, client: Any, **kwargs: Any) -> Any:
+        """CONTRACTS section 3 / design document section 4.2 -- the zero-config record path.
+
+        This is the L2 record path and nothing more: it opens a tape (out=, or
+        AGENTTWIN_RECORD_OUT), returns a client proxy whose
+        chat.completions.create writes one llm_call per call and hands the real
+        response back, and writes that tape on interpreter exit -- call flush() on
+        the proxy to write it sooner.  It is not usable during replay: replay has
+        no client and performs no real call, so a tape is replayable only through
+        Twin.load().
+
+        The import is local because adapters.openai_compatible imports this module
+        for Twin.record; a module-level import here would be a cycle.
+        """
+        from .adapters.openai_compatible import install
+
+        return install(client, **kwargs)
 
 
 class TapeRecorder:
@@ -302,26 +320,17 @@ def _last_terminal(tape: Trace):
 
 
 def _invoke_agent(agent: Any, llm: Any, tools: Mapping[str, Callable[..., Any]], policy: Any) -> Any:
-    fn = getattr(agent, "run", None)
-    if not callable(fn):
-        fn = agent
-    if policy is None:
-        return fn(llm, tools)
-    try:
-        parameters = inspect.signature(fn).parameters
-    except (TypeError, ValueError):
-        return fn(llm, tools)
-    if "policy" in parameters:
-        return fn(llm, tools, policy=policy)
-    kinds = [parameter.kind for parameter in parameters.values()]
-    positional = sum(
-        1
-        for kind in kinds
-        if kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-    )
-    if inspect.Parameter.VAR_POSITIONAL in kinds or positional >= 3:
-        return fn(llm, tools, policy)
-    return fn(llm, tools)
+    """Call agent the way adapters.base.invoke does (CONTRACTS section 3).
+
+    The rule is not restated here: one implementation decides between the three
+    call shapes, and it passes the policy whenever the signature accepts it --
+    including None, so a controller with a required third positional stays
+    callable under replay(agent) with no policy.  The import is local because
+    adapters/__init__ reaches back into this package's facade.
+    """
+    from .adapters.base import invoke
+
+    return invoke(agent, llm, tools, policy)
 
 
 def _build_report(baseline: Trace, trace: Trace, misses: list, drifts: list, divergent: bool) -> Any:
