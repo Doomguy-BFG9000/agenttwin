@@ -136,6 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
     show.set_defaults(handler=_cmd_gallery_show)
     run = actions.add_parser("run", help="replay one fixture and print its report")
     run.add_argument("fixture_id", metavar="ID")
+    run.add_argument("--html", metavar="PATH", help="write the fixture report into the replayer")
     run.set_defaults(handler=_cmd_gallery_run)
     return parser
 
@@ -618,6 +619,8 @@ def _cmd_gallery_run(args: argparse.Namespace) -> int:
     specs = tuple(getattr(fixture, "asserts", ()) or ())
     if specs:
         report.assert_(*specs)
+    if args.html:
+        _write_html(report, args.html)
     print(report.markdown(), end="")
     return int(report.exit_code)
 
