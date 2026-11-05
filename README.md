@@ -208,13 +208,15 @@ This section sits on the second screen because the most common question is "why 
 ## Install
 
 ```bash
-python -m pip install -e .
+python -m pip install agenttwin
 ```
+
+Working on a clone of this repository instead, `python -m pip install -e .`.
 
 An extra dependency is needed only to read and write YAML assertion files (`pyyaml` is imported lazily, inside `load_yaml()` only):
 
 ```bash
-python -m pip install -e ".[yaml]"
+python -m pip install "agenttwin[yaml]"
 ```
 
 Python 3.10+, zero third-party dependencies at runtime: `pyproject.toml` declares `dependencies = []`, and `import agenttwin` does not pull in `pyyaml`.
@@ -271,9 +273,9 @@ strict: no
 
 ## Status
 
-0.1.0 is the version in the repository, not a release number: nothing has been published yet.
+0.1.0 is published: [agenttwin on PyPI](https://pypi.org/project/agenttwin/0.1.0/), Apache-2.0, Python 3.10+.
 
 - Done and tested: the record/replay core (`Twin.record` / `Twin.load`), drift detection, 9 assertion factories plus the combinators and YAML loading, `TraceDiff`, `Report` (JSON / Markdown / single-file HTML), the five `agenttwin` subcommands, the openai-compatible adapter (duck-typed, no SDK import), and the ten bundled fixtures (five before/after pairs).
 - Verified on GitHub: [CI](https://github.com/ravenkernel/agenttwin/actions) runs on every push to `main` — eight jobs: Python 3.10–3.13 on Ubuntu, 3.12 on macOS and Windows, and two stdlib-only import checks that uninstall PyYAML first, plus a console-script step in each. The first run failed on a fixture that used `platform: linux` and therefore matched the real `sys.platform` on the Ubuntu runners; that was a test bug, fixed in `6c5dae7`, and the suite has been green since.
-- Verified locally, but not yet through a release: `python -m pip wheel .` produces `agenttwin-0.1.0-py3-none-any.whl`, which carries all ten fixtures and `html/replayer.html`; installing that wheel into a clean venv gives a working `agenttwin` console script (`agenttwin --version`, `agenttwin gallery list`, and `gallery run` returning 1 for a broken fixture and 0 for its fixed twin).
-- Not done yet: the PyPI release, a coverage gate, any hosted service or dashboard. The examples above run with `PYTHONPATH=src` so they work without installing anything.
+- Verified from a clean install: `python -m pip install agenttwin` into an empty venv from the public index gives `agenttwin --version` → `agenttwin 0.1.0`, all ten fixtures from `agenttwin gallery list`, the bundled single-file HTML replayer, `gallery run repaired` → 0 and `gallery run deathloop` → 1. A record → offline replay → `.html()` loop run from an empty directory outside the repository produced a 68,770-byte report with no unfilled placeholder and no external resource in it.
+- Not done yet: a coverage gate, any hosted service or dashboard. The examples above run with `PYTHONPATH=src` so they work without installing anything.

@@ -208,13 +208,15 @@ exit code: 0
 ## 安装
 
 ```bash
-python -m pip install -e .
+python -m pip install agenttwin
 ```
+
+在仓库副本里改代码就用 `python -m pip install -e .`。
 
 只有在读写 YAML 断言文件时才需要额外依赖（`pyyaml` 仅在 `load_yaml()` 内部惰性导入）：
 
 ```bash
-python -m pip install -e ".[yaml]"
+python -m pip install "agenttwin[yaml]"
 ```
 
 Python 3.10+，运行时零第三方依赖：`pyproject.toml` 里 `dependencies = []`，`import agenttwin` 不会拉起 `pyyaml`。
@@ -271,10 +273,10 @@ strict: no
 
 ## 状态
 
-0.1.0 是仓库里的版本号，不是发布号：还没有对外发布。
+0.1.0 已发布：[PyPI 上的 agenttwin](https://pypi.org/project/agenttwin/0.1.0/)，Apache-2.0，Python 3.10+。
 
 - 已完成并有测试：录制/回放核心（`Twin.record` / `Twin.load`）、drift 检测、9 个断言工厂 + 组合子 + YAML 加载、`TraceDiff`、`Report`（JSON / Markdown / 单文件 HTML）、`agenttwin` 的五个子命令、openai-compatible adapter（鸭子类型，不 import SDK）、十个内置 fixture（五组 before / after）。
 - 已在 GitHub 上验证：[CI](https://github.com/ravenkernel/agenttwin/actions) 在每次 push 到 `main` 时运行，共八个 job：Ubuntu 上的 Python 3.10–3.13、macOS 与 Windows 上的 3.12，加两个先卸载 PyYAML 的 stdlib-only import 检查，每个 job 还都跑一次控制台脚本。首次运行失败在一条用了 `platform: linux` 的 fixture 上——它恰好与 Ubuntu runner 上真实的 `sys.platform` 相同；那是测试的 bug，已在 `6c5dae7` 修掉，之后全绿。
-- 本地验证过、但还没经过一次发布：`python -m pip wheel .` 产出 `agenttwin-0.1.0-py3-none-any.whl`，里面含十个 fixture 与 `html/replayer.html`；把它装进干净的 venv 后 `agenttwin` 控制台脚本可用（`agenttwin --version`、`agenttwin gallery list`，以及 `gallery run` 对坏 fixture 返回 1、对其修复版返回 0）。
-- 还没做：PyPI 发布、覆盖率门槛、任何托管服务或 dashboard。上面所有示例都用 `PYTHONPATH=src` 运行，不装任何东西也能跑。
+- 从干净安装验证过：在空 venv 里从公共索引 `python -m pip install agenttwin`，得到 `agenttwin --version` → `agenttwin 0.1.0`、`agenttwin gallery list` 的十个 fixture、包内的单文件 HTML 回放器，以及 `gallery run repaired` → 0、`gallery run deathloop` → 1。在仓库之外的空目录里跑一遍录制 → 离线回放 → `.html()`，产出一份 68,770 字节的报告，占位符已填、内部没有任何外部资源。
+- 还没做：覆盖率门槛、任何托管服务或 dashboard。上面所有示例都用 `PYTHONPATH=src` 运行，不装任何东西也能跑。
 
