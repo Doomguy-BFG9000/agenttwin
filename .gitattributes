@@ -1,0 +1,5 @@
+# Every platform checks the tapes out with the same bytes: the gallery test
+# compares a regenerated tape against the committed one line by line, and the
+# codec always writes LF (src/agenttwin/trace.py save()), so a CRLF checkout on
+# Windows would fail a test that has nothing to do with line endings.
+* text=auto eol=lf
