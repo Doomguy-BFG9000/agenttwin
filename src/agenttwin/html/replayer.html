@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>AgentTwin — replay</title>
+<style>
+  :root {
+    --bg: #0a0d12; --bg-2: #0d1218; --panel: #111823; --panel-2: #0d141d;
+    --row: rgba(255,255,255,.024); --hover: rgba(255,255,255,.05);
+    --line: rgba(255,255,255,.075); --line-strong: rgba(255,255,255,.17);
+    --ink: #e8eef7; --ink-2: #aab8c9; --ink-3: #74839a;
+    --accent: #4cc9f0; --accent-soft: rgba(76,201,240,.13);
+    --accent-line: rgba(76,201,240,.38); --accent-strong: rgba(76,201,240,.5);
+    --glow: rgba(76,201,240,.13); --track: rgba(255,255,255,.10);
+    --code-bg: rgba(0,0,0,.32); --chip-bg: rgba(255,255,255,.05);
+    --active-bg: rgba(76,201,240,.10); --scroll: rgba(255,255,255,.14);
+    --patched: #ffc857; --patched-bg: rgba(255,200,87,.12); --patched-line: rgba(255,200,87,.42);
+    --add: #3ddc97; --add-bg: rgba(61,220,151,.12); --add-line: rgba(61,220,151,.38);
+    --del: #ff6b6b; --del-bg: rgba(255,107,107,.12); --del-line: rgba(255,107,107,.38);
+    --changed: #b39dff; --changed-bg: rgba(179,157,255,.13); --changed-line: rgba(179,157,255,.40);
+    --pass: #3ddc97; --pass-bg: rgba(61,220,151,.12); --pass-line: rgba(61,220,151,.34);
+    --fail: #ff6b6b; --fail-bg: rgba(255,107,107,.12); --fail-line: rgba(255,107,107,.34);
+    --skip: #ffc857; --skip-bg: rgba(255,200,87,.12); --skip-line: rgba(255,200,87,.34);
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --radius: 14px; --radius-sm: 9px;
+    --col-h: max(320px, 46vh);
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f9; --bg-2: #eaeef4; --panel: #ffffff; --panel-2: #f2f5fa;
+    --row: rgba(15,23,42,.022); --hover: rgba(15,23,42,.05);
+    --line: rgba(15,23,42,.10); --line-strong: rgba(15,23,42,.22);
+    --ink: #0e1725; --ink-2: #3c4b61; --ink-3: #6a7a90;
+    --accent: #0b7c9e; --accent-soft: rgba(11,124,158,.10);
+    --accent-line: rgba(11,124,158,.34); --accent-strong: rgba(11,124,158,.45);
+    --glow: rgba(11,124,158,.09); --track: rgba(15,23,42,.12);
+    --code-bg: #f1f4f8; --chip-bg: rgba(15,23,42,.05);
+    --active-bg: rgba(11,124,158,.09); --scroll: rgba(15,23,42,.18);
+    --patched: #8a5a00; --patched-bg: rgba(255,184,0,.18); --patched-line: rgba(160,110,0,.40);
+    --add: #0b7d58; --add-bg: rgba(11,125,88,.12); --add-line: rgba(11,125,88,.34);
+    --del: #c02b2b; --del-bg: rgba(192,43,43,.10); --del-line: rgba(192,43,43,.34);
+    --changed: #5b3fd0; --changed-bg: rgba(91,63,208,.10); --changed-line: rgba(91,63,208,.32);
+    --pass: #0b7d58; --pass-bg: rgba(11,125,88,.11); --pass-line: rgba(11,125,88,.30);
+    --fail: #c02b2b; --fail-bg: rgba(192,43,43,.10); --fail-line: rgba(192,43,43,.30);
+    --skip: #8a5a00; --skip-bg: rgba(255,184,0,.16); --skip-line: rgba(160,110,0,.32);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  html[data-theme="light"] { color-scheme: light; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink); min-height: 100vh;
+    font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background: radial-gradient(900px 420px at 12% -8%, var(--glow), transparent 70%);
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  h1, h2 { margin: 0; }
+  pre { margin: 0; }
+  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  .shell {
+    position: relative; z-index: 1; max-width: 1580px; margin: 0 auto;
+    padding: 18px 22px 14px; display: flex; flex-direction: column; gap: 13px;
+  }
+  .shell[hidden] { display: none; }
+  /* ---------- top bar ---------- */
+  .topbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 2px 2px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .mark {
+    width: 26px; height: 26px; border-radius: 8px; position: relative;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    box-shadow: 0 6px 18px -6px var(--accent-strong);
+  }
+  .mark::after {
+    content: ""; position: absolute; inset: 7px; border-radius: 3px;
+    background: var(--bg); opacity: .88;
+  }
+  .wordmark { font-size: 15.5px; font-weight: 700; letter-spacing: -.01em; }
+  .brand-sub { font: 11px var(--mono); color: var(--ink-3); letter-spacing: .10em; text-transform: uppercase; }
+  .topbar-mid { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .trace-id {
+    font: 600 13px var(--mono); color: var(--ink-2); overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; max-width: 42vw;
+  }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .kbd-hint { font: 11px var(--mono); color: var(--ink-3); }
+  .kbd-hint kbd {
+    font: 10.5px var(--mono); padding: 1px 5px; border-radius: 4px;
+    border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-2);
+  }
+  .ghost-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px;
+    border-radius: 9px; border: 1px solid var(--line); background: var(--panel);
+    color: var(--ink-2); font-size: 12.5px; font-weight: 600;
+  }
+  .ghost-btn:hover { border-color: var(--line-strong); color: var(--ink); }
+  .ghost-btn.small { padding: 4px 9px; font-size: 11.5px; font-weight: 500; }
+  /* ---------- layout ---------- */
+  .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 396px; gap: 13px; align-items: start; }
+  .stack-left, .stack-right { display: flex; flex-direction: column; gap: 13px; min-width: 0; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 24px 44px -38px rgba(0,0,0,.9);
+  }
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 12px 14px 7px; }
+  .panel-head h2 { font-size: 11.5px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--ink-2); }
+  .panel-meta { font: 11px var(--mono); color: var(--ink-3); text-align: right; }
+  /* ---------- transport ---------- */
+  .transport { padding: 12px 14px 13px; }
+  .transport-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .btn-group {
+    display: inline-flex; gap: 2px; padding: 3px; border-radius: 11px;
+    background: var(--panel-2); border: 1px solid var(--line);
+  }
+  .tbtn {
+    display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px;
+    border-radius: 8px; color: var(--ink-2); font-size: 12.5px; font-weight: 600;
+    letter-spacing: .01em; transition: background .12s, color .12s;
+  }
+  .tbtn:hover { background: var(--hover); color: var(--ink); }
+  .tbtn.is-on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .glyph { display: inline-block; vertical-align: middle; }
+  .g-tri { width: 0; height: 0; border-top: 5.5px solid transparent; border-bottom: 5.5px solid transparent; border-left: 9px solid currentColor; }
+  .g-tri.left { border-left: 0; border-right: 9px solid currentColor; }
+  .g-pause { width: 9px; height: 11px; background: linear-gradient(90deg, currentColor 0 3px, transparent 3px 6px, currentColor 6px 9px); }
+  .g-bar { width: 2px; height: 11px; background: currentColor; border-radius: 1px; }
+  .speed { display: inline-flex; align-items: center; gap: 8px; font: 11px var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+  .speed select {
+    -webkit-appearance: none; appearance: none; border: 1px solid var(--line);
+    border-color: var(--line); border-radius: 8px; padding: 6px 26px 6px 10px;
+    background-color: var(--panel-2); color: var(--ink); font: 600 12.5px/1.2 var(--sans);
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+                      linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 14px) calc(50% + 1px), calc(100% - 9px) calc(50% + 1px);
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; cursor: pointer;
+  }
+  .status { margin-left: auto; font: 11.5px var(--mono); color: var(--ink-3); white-space: nowrap; }
+  .status b { color: var(--ink-2); font-weight: 600; }
+  .status .sep { opacity: .45; padding: 0 5px; }
+
+  .scrub-row { margin-top: 11px; }
+  #scrubber {
+    -webkit-appearance: none; appearance: none; display: block; width: 100%;
+    height: 6px; border-radius: 99px; outline-offset: 7px; cursor: pointer;
+    background: linear-gradient(90deg, var(--accent) var(--fill, 0%), var(--track) var(--fill, 0%));
+  }
+  #scrubber::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+    background: var(--panel); border: 2px solid var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft); cursor: grab;
+  }
+  #scrubber::-moz-range-thumb {
+    width: 13px; height: 13px; border-radius: 50%; background: var(--panel);
+    border: 2px solid var(--accent); cursor: grab;
+  }
+
+  .filter-row {
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    margin-top: 12px; padding-top: 11px; border-top: 1px dashed var(--line);
+  }
+  .filter-label { font: 10.5px var(--mono); letter-spacing: .10em; text-transform: uppercase; color: var(--ink-3); }
+  .kind-filters { display: flex; flex-wrap: wrap; gap: 5px; }
+  .kind-chip { position: relative; display: inline-flex; }
+  .kind-chip input { position: absolute; width: 0; height: 0; opacity: 0; }
+  .kind-chip span {
+    display: inline-block; padding: 3px 8px; border-radius: 99px;
+    border: 1px solid var(--line); background: var(--chip-bg);
+    font: 500 11px/1.5 var(--mono); color: var(--ink-3); cursor: pointer;
+  }
+  .kind-chip:hover span { color: var(--ink-2); border-color: var(--line-strong); }
+  .kind-chip input:checked + span { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+  .kind-chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #actor-filter {
+    width: 148px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--ink); font: 12px var(--mono);
+  }
+  #actor-filter::placeholder { color: var(--ink-3); }
+  /* ---------- columns ---------- */
+  .columns-panel { overflow: hidden; }
+  .col-head {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px;
+    padding: 10px 15px; border-bottom: 1px solid var(--line); background: var(--panel-2);
+  }
+  .col-title { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; letter-spacing: .01em; }
+  .col-title.right { justify-content: flex-end; }
+  .col-count { font: 11px var(--mono); font-weight: 400; color: var(--ink-3); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot-base { background: var(--ink-3); }
+  .dot-cur { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .legend { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+  .columns { display: grid; grid-template-columns: 1fr 1fr; }
+  .col { min-width: 0; }
+  .col + .col { border-left: 1px solid var(--line); }
+  .col-body {
+    position: relative; display: flex; flex-direction: column; gap: 5px;
+    padding: 8px; max-height: var(--col-h); min-height: 210px; overflow-y: auto;
+  }
+  .col-body:empty::after {
+    content: "no events"; display: block; padding: 22px 0; text-align: center;
+    font: 11.5px var(--mono); color: var(--ink-3);
+  }
+  .col-foot {
+    padding: 8px 15px; border-top: 1px solid var(--line); background: var(--panel-2);
+    font: 11px var(--mono); color: var(--ink-3);
+  }
+
+  .row {
+    position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 9px;
+    padding: 7px 9px 7px 6px; border-radius: var(--radius-sm);
+    border-left: 3px solid transparent; background: var(--row); cursor: pointer;
+  }
+  .row:hover { background: var(--hover); }
+  .row-gutter { display: flex; flex-direction: column; gap: 1px; font: 10.5px/1.5 var(--mono); color: var(--ink-3); }
+  .row-seq { font-size: 12px; font-weight: 700; letter-spacing: .03em; color: var(--ink-2); }
+  .row-main { min-width: 0; }
+  .row-head { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .row-actor { font: 11px/1.5 var(--mono); color: var(--ink-2); }
+  .row-payload {
+    margin-top: 2px; font: 11px/1.5 var(--mono); color: var(--ink-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .row-json {
+    display: none; margin: 5px 0 0; padding: 8px; border-radius: 7px;
+    background: var(--code-bg); border: 1px solid var(--line); color: var(--ink-2);
+    font: 11px/1.5 var(--mono); white-space: pre-wrap; word-break: break-word;
+    max-height: 210px; overflow: auto;
+  }
+  .row.is-open .row-json { display: block; }
+  .row.is-open .row-payload { display: none; }
+  .row.is-hidden { display: none; }
+
+  .row[data-change="added"] { border-left-color: var(--add); }
+  .row[data-change="removed"] { border-left-color: var(--del); }
+  .row[data-change="changed"] { border-left-color: var(--changed); }
+  .row.is-patched { background: var(--patched-bg); outline: 1px dashed var(--patched-line); outline-offset: -3px; }
+  .row.is-active { border-left-color: var(--accent); background: var(--active-bg); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .row.is-flash { animation: flash 1.1s ease-out 1; }
+  @keyframes flash {
+    0% { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 0 var(--accent-soft); }
+    100% { box-shadow: inset 0 0 0 1px var(--accent-line), 0 0 0 12px transparent; }
+  }
+  .row-empty { cursor: default; background: transparent; }
+  .row-empty:hover { background: transparent; }
+  .empty-slot {
+    display: block; padding: 5px 8px; border-radius: 7px; border: 1px dashed var(--line-strong);
+    font: 11px/1.5 var(--mono); color: var(--ink-3); text-align: center; font-style: italic;
+  }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 99px;
+    font: 600 10px/1.6 var(--mono); letter-spacing: .03em; white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .chip-kind { color: var(--ink-2); background: var(--chip-bg); border-color: var(--line); }
+  .chip-mode { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); text-transform: uppercase; }
+  .chip-patched { color: var(--patched); background: var(--patched-bg); border-color: var(--patched-line); }
+  .chip-added { color: var(--add); background: var(--add-bg); border-color: var(--add-line); }
+  .chip-removed { color: var(--del); background: var(--del-bg); border-color: var(--del-line); }
+  .chip-changed { color: var(--changed); background: var(--changed-bg); border-color: var(--changed-line); }
+  .chip-xs { font-size: 9.5px; padding: 0 5px; letter-spacing: .02em; }
+  /* ---------- assertions ---------- */
+  .assert-list { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 10px; max-height: 38vh; overflow: auto; }
+  .assert-row {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 9px;
+    width: 100%; padding: 9px 10px; border-radius: var(--radius-sm);
+    border: 1px solid var(--line); background: var(--row); text-align: left;
+  }
+  .assert-row.is-jumpable { cursor: pointer; }
+  .assert-row.is-jumpable:hover { border-color: var(--accent-line); background: var(--hover); }
+  .assert-name { font: 600 12px/1.5 var(--mono); color: var(--ink); word-break: break-word; }
+  .assert-detail { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.45; color: var(--ink-3); }
+  .assert-jump { font: 10.5px var(--mono); color: var(--accent); white-space: nowrap; padding-top: 2px; }
+  .assert-empty, .diff-empty {
+    padding: 16px 8px; text-align: center; font: 11.5px var(--mono); color: var(--ink-3);
+  }
+  .badge {
+    display: inline-block; min-width: 42px; text-align: center; padding: 2px 6px;
+    border-radius: 6px; border: 1px solid transparent;
+    font: 700 9.5px/1.6 var(--mono); letter-spacing: .08em;
+  }
+  .badge-pass { color: var(--pass); background: var(--pass-bg); border-color: var(--pass-line); }
+  .badge-fail { color: var(--fail); background: var(--fail-bg); border-color: var(--fail-line); }
+  .badge-skip { color: var(--skip); background: var(--skip-bg); border-color: var(--skip-line); }
+  /* ---------- state diff ---------- */
+  .diff-list { display: flex; flex-direction: column; gap: 7px; padding: 6px 8px 10px; max-height: 42vh; overflow: auto; }
+  .diff-row { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; background: var(--row); }
+  .diff-head {
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    padding: 6px 9px; background: var(--panel-2); border-bottom: 1px solid var(--line);
+  }
+  .seq-tag { font: 700 11px var(--mono); color: var(--ink-2); }
+  .diff-keys { margin-left: auto; font: 10.5px var(--mono); color: var(--changed); }
+  .diff-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); }
+  .diff-cell { background: var(--panel); padding: 7px 9px; min-width: 0; }
+  .diff-side {
+    display: block; margin-bottom: 3px; font: 600 9.5px var(--mono);
+    letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .diff-cell pre {
+    font: 10.5px/1.5 var(--mono); color: var(--ink-2);
+    white-space: pre-wrap; word-break: break-word; max-height: 150px; overflow: auto;
+  }
+  .diff-cell .empty-slot { padding: 3px 6px; font-size: 10px; }
+  /* ---------- footer fingerprint ---------- */
+  .fingerprint {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 2px 3px 6px; font: 10.5px var(--mono); color: var(--ink-3);
+  }
+  .fp-line { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fp-details summary { cursor: pointer; color: var(--ink-3); }
+  .fp-details summary:hover { color: var(--ink-2); }
+  .fp-details pre {
+    margin-top: 8px; padding: 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--code-bg); max-height: 190px; overflow: auto; font: 10.5px/1.5 var(--mono);
+  }
+
+  .notice {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 40;
+    max-width: 74vw; padding: 9px 14px; border-radius: 10px;
+    background: var(--panel); border: 1px solid var(--accent-line); color: var(--ink);
+    font-size: 12.5px; box-shadow: 0 22px 44px -24px rgba(0,0,0,.85);
+  }
+  .notice[hidden] { display: none; }
+  /* ---------- fatal ---------- */
+  .fatal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+  .fatal[hidden] { display: none; }
+  .fatal-card {
+    width: 100%; max-width: 580px; padding: 26px 26px 20px; border-radius: 16px;
+    background: var(--panel); border: 1px solid var(--fail-line);
+    box-shadow: 0 40px 80px -50px rgba(0,0,0,.9);
+  }
+  .fatal-badge {
+    display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 12px;
+    border-radius: 10px; background: var(--fail-bg); color: var(--fail);
+    font: 800 17px var(--mono);
+  }
+  .fatal-card h1 { font-size: 17.5px; margin-bottom: 8px; letter-spacing: -.01em; }
+  .fatal-card p { margin: 0 0 8px; font-size: 13px; color: var(--ink-2); }
+  .fatal-card code { font: 11.5px var(--mono); padding: 1px 5px; border-radius: 5px; background: var(--code-bg); }
+  .fatal-hint { color: var(--ink-3) !important; font-size: 12px !important; }
+
+  @media (max-width: 1180px) {
+    .workspace { grid-template-columns: 1fr; }
+    .stack-right { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .trace-id { max-width: 60vw; }
+  }
+  @media (max-width: 820px) {
+    .shell { padding: 14px 12px; }
+    .stack-right { grid-template-columns: 1fr; }
+    .col-head { grid-template-columns: 1fr; }
+    .legend { display: none; }
+    .col-title.right { justify-content: flex-start; }
+    .col + .col { border-left: 0; border-top: 1px solid var(--line); }
+    .columns { grid-template-columns: 1fr; }
+    .kbd-hint { display: none; }
+    .status { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="shell" id="shell" hidden>
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <div class="wordmark">AgentTwin</div>
+        <div class="brand-sub">replay viewer</div>
+      </div>
+    </div>
+    <div class="topbar-mid">
+      <span class="trace-id" id="trace-id" title="trace id">&mdash;</span>
+      <span class="chip chip-mode" id="mode-chip">&mdash;</span>
+    </div>
+    <div class="topbar-right">
+      <span class="kbd-hint"><kbd>space</kbd> play/pause &middot; <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step</span>
+      <button class="ghost-btn" type="button" id="theme-toggle" aria-pressed="false">Light theme</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <div class="stack-left">
+      <section class="panel transport" aria-label="Timeline">
+        <div class="transport-row">
+          <div class="btn-group" role="group" aria-label="Playback controls">
+            <button type="button" class="tbtn" id="btn-prev" title="Step back (Left arrow)">
+              <span class="glyph g-tri left" aria-hidden="true"></span>Back
+            </button>
+            <button type="button" class="tbtn" id="btn-play" title="Play (Space)" aria-pressed="false">
+              <span class="glyph g-tri" aria-hidden="true"></span>Play
+            </button>
+            <button type="button" class="tbtn" id="btn-pause" title="Pause (Space)" aria-pressed="true">
+              <span class="glyph g-pause" aria-hidden="true"></span>Pause
+            </button>
+            <button type="button" class="tbtn" id="btn-next" title="Step forward (Right arrow)">
+              Step<span class="glyph g-tri" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="speed">
+            <label for="speed">speed</label>
+            <select id="speed" aria-label="Playback speed">
+              <option value="0.5">0.5&times;</option>
+              <option value="1" selected>1&times;</option>
+              <option value="2">2&times;</option>
+              <option value="4">4&times;</option>
+            </select>
+          </div>
+          <div class="status" id="status" aria-live="polite">
+            frame <b id="frame-pos">0</b><span class="sep">/</span><span id="frame-total">0</span>
+            <span class="sep">&middot;</span>seq <span id="frame-seq">&mdash;</span>
+          </div>
+        </div>
+        <div class="scrub-row">
+          <input type="range" id="scrubber" min="0" max="0" step="1" value="0"
+                 aria-label="Event index" aria-valuetext="frame 0 of 0">
+        </div>
+        <div class="filter-row">
+          <span class="filter-label">kinds</span>
+          <div class="kind-filters" id="filter-kinds"></div>
+          <span class="filter-label">actor</span>
+          <input id="actor-filter" type="text" list="actor-list" placeholder="any actor"
+                 autocomplete="off" spellcheck="false" aria-label="Filter by actor">
+          <datalist id="actor-list"></datalist>
+          <button class="ghost-btn small" type="button" id="filter-reset">Reset filters</button>
+        </div>
+      </section>
+
+      <section class="panel columns-panel" aria-label="Baseline and current events">
+        <div class="col-head">
+          <div class="col-title">
+            <span class="dot dot-base" aria-hidden="true"></span>
+            <span id="label-baseline">baseline</span>
+            <span class="col-count" id="count-baseline">0</span>
+          </div>
+          <div class="legend" aria-hidden="true">
+            <span class="chip chip-patched">patched</span>
+            <span class="chip chip-added">added</span>
+            <span class="chip chip-removed">removed</span>
+            <span class="chip chip-changed">changed</span>
+          </div>
+          <div class="col-title right">
+            <span class="col-count" id="count-current">0</span>
+            <span id="label-current">current</span>
+            <span class="dot dot-cur" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="columns">
+          <div class="col">
+            <div class="col-body" id="col-baseline"></div>
+          </div>
+          <div class="col">
+            <div class="col-body" id="col-current"></div>
+          </div>
+        </div>
+        <div class="col-foot" id="filter-note">no events loaded</div>
+      </section>
+    </div>
+
+    <div class="stack-right">
+      <section class="panel" aria-label="Assertion results">
+        <div class="panel-head">
+          <h2>Assertions</h2>
+          <div class="panel-meta" id="assertion-summary">&mdash;</div>
+        </div>
+        <div class="assert-list" id="assertions"></div>
+      </section>
+
+      <section class="panel" aria-label="State diff">
+        <div class="panel-head">
+          <h2>State diff</h2>
+          <div class="panel-meta" id="diff-summary">&mdash;</div>
+        </div>
+        <div class="diff-list" id="state-diff"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="fingerprint">
+    <span class="filter-label">header</span>
+    <span class="fp-line" id="fp-line">&mdash;</span>
+    <details class="fp-details" id="header-fingerprint">
+      <summary>full header</summary>
+      <pre id="fp-json"></pre>
+    </details>
+  </footer>
+</div>
+
+<div class="fatal" id="error-panel" hidden role="alertdialog" aria-labelledby="error-title">
+  <div class="fatal-card">
+    <div class="fatal-badge" aria-hidden="true">!</div>
+    <h1 id="error-title">This trace could not be loaded</h1>
+    <p id="error-message">No payload was found.</p>
+    <p class="fatal-hint">
+      The viewer reads a single JSON blob from
+      <code>&lt;script type="application/json" id="agenttwin-payload"&gt;</code>.
+      Re-export the trace and open the generated file again.
+    </p>
+  </div>
+</div>
+
+<div class="notice" id="notice" hidden role="status"></div>
+
+<script type="application/json" id="agenttwin-payload">__AGENTTWIN_PAYLOAD__</script>
+<script>
+(function () {
+  "use strict";
+
+  var PAYLOAD_ID = "agenttwin-payload";
+  var PLACEHOLDER = "__AGENTTWIN" + "_PAYLOAD__";
+  var BASE_MS = 700;
+  var KIND_ORDER = ["llm_call", "tool_call", "tool_result", "state_patch",
+                    "decision", "human_input", "error", "terminal"];
+
+  var state = {
+    data: null,
+    frames: [],
+    rows: [],
+    index: -1,
+    playing: false,
+    timer: null,
+    speed: 1,
+    kinds: {},
+    actorQuery: ""
+  };
+  /* ---------- helpers ---------- */
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function isObj(v) { return v !== null && typeof v === "object" && !isArr(v); }
+  function isArr(v) { return Object.prototype.toString.call(v) === "[object Array]"; }
+  function asArray(v) { return isArr(v) ? v : []; }
+  function clamp(n, lo, hi) { return n < lo ? lo : (n > hi ? hi : n); }
+  function stable(v) {
+    try { return JSON.stringify(v); } catch (e) { return String(v); }
+  }
+  function shortJson(v, max) {
+    var s = stable(v);
+    if (s === undefined) { s = String(v); }
+    return s.length > max ? s.slice(0, max - 1) + "\u2026" : s;
+  }
+  function pretty(v) {
+    var s;
+    try { s = JSON.stringify(v, null, 2); } catch (e) { s = String(v); }
+    return s === undefined ? String(v) : s;
+  }
+  function fmtT(t) {
+    return typeof t === "number" && isFinite(t) ? t.toFixed(1) + "s" : "\u2014";
+  }
+  function normStatus(s) {
+    var u = String(s === undefined || s === null ? "" : s).toUpperCase();
+    return u === "PASS" || u === "FAIL" || u === "SKIP" ? u : "SKIP";
+  }
+  /* ---------- payload ---------- */
+  function readPayload() {
+    var node = $(PAYLOAD_ID);
+    if (!node) { throw new Error("The agenttwin-payload element is missing from this file."); }
+    var raw = node.textContent || "";
+    var trimmed = raw.replace(/^\s+|\s+$/g, "");
+    if (!trimmed) { throw new Error("The embedded payload is empty."); }
+    if (trimmed === PLACEHOLDER) {
+      throw new Error("This file is the unfilled template: the payload placeholder was never replaced.");
+    }
+    var parsed;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (e) {
+      throw new Error("The embedded payload is not valid JSON: " + (e && e.message ? e.message : e));
+    }
+    if (!isObj(parsed)) { throw new Error("The embedded payload is not a JSON object."); }
+    if (!isArr(parsed.baseline) && !isArr(parsed.current)) {
+      throw new Error("The payload carries neither a baseline nor a current event list.");
+    }
+    return parsed;
+  }
+  function normalize(data) {
+    var diff = isObj(data.diff) ? data.diff : {};
+    return {
+      trace_id: typeof data.trace_id === "string" ? data.trace_id : "",
+      mode: typeof data.mode === "string" ? data.mode : "",
+      header: isObj(data.header) ? data.header : {},
+      baseline: asArray(data.baseline).filter(function (e) { return isObj(e) && e.seq !== undefined && e.seq !== null; }),
+      current: asArray(data.current).filter(function (e) { return isObj(e) && e.seq !== undefined && e.seq !== null; }),
+      results: asArray(data.results).filter(isObj),
+      diff: {
+        first_divergence_seq: diff.first_divergence_seq === undefined ? null : diff.first_divergence_seq,
+        events: asArray(diff.events).filter(isObj)
+      },
+      labels: isObj(data.labels) ? data.labels : {}
+    };
+  }
+  /* ---------- frame alignment ---------- */
+  function buildFrames(data) {
+    var baseBySeq = {}, curBySeq = {}, diffBySeq = {}, seen = {}, seqs = [];
+
+    function note(seq) {
+      var key = String(seq);
+      if (!seen[key]) { seen[key] = true; seqs.push(seq); }
+    }
+
+    data.baseline.forEach(function (ev) { baseBySeq[ev.seq] = ev; note(ev.seq); });
+    data.current.forEach(function (ev) { curBySeq[ev.seq] = ev; note(ev.seq); });
+    data.diff.events.forEach(function (row) {
+      if (row.seq === undefined || row.seq === null) { return; }
+      diffBySeq[row.seq] = row;
+      note(row.seq);
+    });
+
+    seqs.sort(function (a, b) { return Number(a) - Number(b); });
+
+    return seqs.map(function (seq) {
+      var row = diffBySeq[seq];
+      var base = baseBySeq[seq] || (row && isObj(row.baseline) ? row.baseline : null);
+      var cur = curBySeq[seq] || (row && isObj(row.current) ? row.current : null);
+      var change = row && typeof row.change === "string" ? row.change : "";
+      if (change !== "same" && change !== "added" && change !== "removed" && change !== "changed") {
+        change = base && cur ? "same" : (cur ? "added" : "removed");
+      }
+      return { seq: seq, base: base, cur: cur, change: change };
+    });
+  }
+  function indexOfSeq(seq) {
+    for (var i = 0; i < state.frames.length; i++) {
+      if (String(state.frames[i].seq) === String(seq)) { return i; }
+    }
+    return -1;
+  }
+  /* ---------- row rendering ---------- */
+  function changeChip(change, side) {
+    if (change === "added" && side !== "current") { return null; }
+    if (change === "removed" && side !== "baseline") { return null; }
+    if (change === "changed") { return el("span", "chip chip-changed", "changed"); }
+    if (change === "added") { return el("span", "chip chip-added", "added"); }
+    if (change === "removed") { return el("span", "chip chip-removed", "removed"); }
+    return null;
+  }
+  function emptySlotText(frame, side) {
+    if (frame.change === "added") { return "not in recorded run"; }
+    if (frame.change === "removed") { return "not in replay"; }
+    return side === "baseline" ? "no recorded event" : "no replay event";
+  }
+  function buildRow(frame, side, index) {
+    var ev = side === "baseline" ? frame.base : frame.cur;
+    var row = el("div", "row");
+    row.setAttribute("data-side", side);
+    row.setAttribute("data-seq", String(frame.seq));
+    row.setAttribute("data-change", frame.change);
+
+    var gutter = el("div", "row-gutter");
+    gutter.appendChild(el("span", "row-seq", frame.seq));
+    gutter.appendChild(el("span", "row-t", fmtT(ev ? ev.t : null)));
+    row.appendChild(gutter);
+
+    var main = el("div", "row-main");
+
+    if (!ev) {
+      row.className = "row row-empty";
+      main.appendChild(el("span", "empty-slot", emptySlotText(frame, side)));
+      row.appendChild(main);
+      return row;
+    }
+
+    if (ev.patched === true) { row.classList.add("is-patched"); }
+
+    var head = el("div", "row-head");
+    head.appendChild(el("span", "chip chip-kind", ev.kind || "?"));
+    head.appendChild(el("span", "row-actor", ev.actor || "\u2014"));
+    if (ev.patched === true) { head.appendChild(el("span", "chip chip-patched", "patched")); }
+    var chip = changeChip(frame.change, side);
+    if (chip) { head.appendChild(chip); }
+    main.appendChild(head);
+
+    main.appendChild(el("div", "row-payload", shortJson(ev.payload, 120)));
+
+    var pre = el("pre", "row-json", pretty(ev));
+    main.appendChild(pre);
+    row.appendChild(main);
+
+    row.addEventListener("click", function () { selectFrame(index); });
+    return row;
+  }
+  function renderColumns() {
+    var baseCol = $("col-baseline");
+    var curCol = $("col-current");
+    baseCol.innerHTML = "";
+    curCol.innerHTML = "";
+    state.rows = [];
+
+    state.frames.forEach(function (frame, index) {
+      var b = buildRow(frame, "baseline", index);
+      var c = buildRow(frame, "current", index);
+      baseCol.appendChild(b);
+      curCol.appendChild(c);
+      state.rows.push({ base: b, cur: c });
+    });
+  }
+  /* ---------- selection / transport ---------- */
+  function centerRow(container, row) {
+    var target = row.offsetTop - Math.round((container.clientHeight - row.offsetHeight) / 2);
+    container.scrollTop = target < 0 ? 0 : target;
+  }
+  function flashRow(row) {
+    row.classList.remove("is-flash");
+    void row.offsetWidth;
+    row.classList.add("is-flash");
+  }
+  function selectFrame(index, flash) {
+    if (!state.frames.length) { return; }
+    index = clamp(Number(index) || 0, 0, state.frames.length - 1);
+    var previous = state.index;
+    state.index = index;
+
+    applyRowVisibility();
+
+    var old = state.rows[previous];
+    if (old) {
+      old.base.classList.remove("is-active", "is-open");
+      old.cur.classList.remove("is-active", "is-open");
+    }
+    var now = state.rows[index];
+    if (now) {
+      now.base.classList.add("is-active", "is-open");
+      now.cur.classList.add("is-active", "is-open");
+      centerRow($("col-baseline"), now.base);
+      centerRow($("col-current"), now.cur);
+      if (flash) { flashRow(now.base); flashRow(now.cur); }
+    }
+    syncTransport();
+  }
+  function syncTransport() {
+    var total = state.frames.length;
+    var frame = state.frames[state.index];
+    $("frame-pos").textContent = total ? String(state.index + 1) : "0";
+    $("frame-total").textContent = String(total);
+    $("frame-seq").textContent = frame ? String(frame.seq) : "\u2014";
+
+    var scrubber = $("scrubber");
+    scrubber.max = String(Math.max(0, total - 1));
+    scrubber.value = String(state.index < 0 ? 0 : state.index);
+    scrubber.disabled = total === 0;
+    var pct = 0;
+    if (total > 1) { pct = (state.index / (total - 1)) * 100; }
+    else if (total === 1) { pct = 100; }
+    scrubber.style.setProperty("--fill", pct.toFixed(2) + "%");
+    scrubber.setAttribute("aria-valuetext",
+      "frame " + (state.index + 1) + " of " + total + ", seq " + (frame ? frame.seq : "none"));
+  }
+  function updatePlayButtons() {
+    var play = $("btn-play");
+    var pause = $("btn-pause");
+    play.setAttribute("aria-pressed", state.playing ? "true" : "false");
+    pause.setAttribute("aria-pressed", state.playing ? "false" : "true");
+    play.classList.toggle("is-on", state.playing);
+    pause.classList.toggle("is-on", !state.playing);
+  }
+  function clearTimer() {
+    if (state.timer) { window.clearTimeout(state.timer); state.timer = null; }
+  }
+  function pause() {
+    clearTimer();
+    if (!state.playing) { return; }
+    state.playing = false;
+    updatePlayButtons();
+  }
+  function schedule() {
+    clearTimer();
+    state.timer = window.setTimeout(function () {
+      if (!state.playing) { return; }
+      if (stepForward()) { schedule(); } else { pause(); }
+    }, Math.round(BASE_MS / state.speed));
+  }
+  function play() {
+    if (state.playing) { return; }
+    var visible = visibleIndexes();
+    if (!visible.length) { notify("No frames match the current filter."); return; }
+    if (visible[visible.length - 1] <= state.index) { selectFrame(visible[0]); }
+    state.playing = true;
+    updatePlayButtons();
+    schedule();
+  }
+  function togglePlay() { if (state.playing) { pause(); } else { play(); } }
+  /* ---------- filters ---------- */
+  function matchesNow(frame) {
+    var ev = frame.cur || frame.base;
+    if (!ev) { return true; }
+    if (state.kinds[ev.kind] === false) { return false; }
+    if (!state.actorQuery) { return true; }
+    var haystack = String(frame.base ? frame.base.actor : "").toLowerCase() + " " +
+                   String(frame.cur ? frame.cur.actor : "").toLowerCase();
+    return haystack.indexOf(state.actorQuery) >= 0;
+  }
+  function visibleIndexes() {
+    var out = [];
+    for (var i = 0; i < state.frames.length; i++) {
+      if (matchesNow(state.frames[i])) { out.push(i); }
+    }
+    return out;
+  }
+  function applyRowVisibility() {
+    for (var i = 0; i < state.rows.length; i++) {
+      var show = i === state.index || matchesNow(state.frames[i]);
+      state.rows[i].base.classList.toggle("is-hidden", !show);
+      state.rows[i].cur.classList.toggle("is-hidden", !show);
+    }
+    updateFilterNote();
+  }
+  function updateFilterNote() {
+    var total = state.frames.length;
+    if (!total) { $("filter-note").textContent = "this trace contains no events"; return; }
+    var shown = visibleIndexes().length;
+    var text = "showing " + shown + " of " + total + " frames \u00b7 playback and stepping follow the filter";
+    var first = state.data.diff.first_divergence_seq;
+    if (first !== null && first !== undefined) { text += " \u00b7 first divergence at seq " + first; }
+    $("filter-note").textContent = text;
+  }
+  function stepForward() {
+    var visible = visibleIndexes();
+    for (var i = 0; i < visible.length; i++) {
+      if (visible[i] > state.index) { selectFrame(visible[i]); return true; }
+    }
+    return false;
+  }
+  function stepBack() {
+    pause();
+    var visible = visibleIndexes();
+    for (var i = visible.length - 1; i >= 0; i--) {
+      if (visible[i] < state.index) { selectFrame(visible[i]); return true; }
+    }
+    return false;
+  }
+  function renderKindFilters() {
+    var present = {};
+    state.frames.forEach(function (frame) {
+      if (frame.base && frame.base.kind) { present[frame.base.kind] = true; }
+      if (frame.cur && frame.cur.kind) { present[frame.cur.kind] = true; }
+    });
+    var list = KIND_ORDER.filter(function (kind) { return present[kind]; });
+    Object.keys(present).sort().forEach(function (kind) {
+      if (KIND_ORDER.indexOf(kind) < 0) { list.push(kind); }
+    });
+
+    var host = $("filter-kinds");
+    host.innerHTML = "";
+    state.kinds = {};
+    list.forEach(function (kind) {
+      var label = el("label", "kind-chip");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = true;
+      input.value = kind;
+      input.setAttribute("aria-label", "show " + kind + " events");
+      input.addEventListener("change", function () {
+        state.kinds[kind] = input.checked;
+        applyRowVisibility();
+      });
+      state.kinds[kind] = true;
+      label.appendChild(input);
+      label.appendChild(el("span", null, kind));
+      host.appendChild(label);
+    });
+  }
+  function renderActorOptions() {
+    var seen = {};
+    state.frames.forEach(function (frame) {
+      [frame.base, frame.cur].forEach(function (ev) {
+        if (ev && ev.actor) { seen[ev.actor] = true; }
+      });
+    });
+    var host = $("actor-list");
+    host.innerHTML = "";
+    Object.keys(seen).sort().forEach(function (actor) {
+      var option = document.createElement("option");
+      option.value = actor;
+      host.appendChild(option);
+    });
+  }
+  /* ---------- assertions ---------- */
+  function renderAssertions() {
+    var host = $("assertions");
+    var results = state.data.results;
+    var counts = { PASS: 0, FAIL: 0, SKIP: 0 };
+    host.innerHTML = "";
+
+    results.forEach(function (result) { counts[normStatus(result.status)] += 1; });
+    $("assertion-summary").textContent = results.length
+      ? counts.PASS + " pass \u00b7 " + counts.FAIL + " fail \u00b7 " + counts.SKIP + " skip"
+      : "none";
+
+    if (!results.length) {
+      host.appendChild(el("div", "assert-empty", "no assertions recorded for this trace"));
+      return;
+    }
+
+    results.forEach(function (result) {
+      var status = normStatus(result.status);
+      var row = status === "FAIL" ? document.createElement("button") : el("div", "assert-row");
+      if (status === "FAIL") { row.type = "button"; }
+      row.className = "assert-row" + (status === "FAIL" ? " is-jumpable" : "");
+
+      row.appendChild(el("span", "badge badge-" + status.toLowerCase(), status));
+
+      var body = el("div");
+      body.appendChild(el("span", "assert-name", result.name || "(unnamed assertion)"));
+      if (result.detail) { body.appendChild(el("span", "assert-detail", result.detail)); }
+      row.appendChild(body);
+
+      var offense = result.first_offense_seq;
+      if (offense !== null && offense !== undefined) {
+        row.appendChild(el("span", "assert-jump", "seq " + offense));
+      }
+
+      if (status === "FAIL") {
+        row.title = "Jump to the first offending frame";
+        row.addEventListener("click", function () { jumpToOffense(result); });
+      }
+      host.appendChild(row);
+    });
+  }
+  function jumpToOffense(result) {
+    var offense = result.first_offense_seq;
+    if (offense === null || offense === undefined) {
+      notify("This failure records no offense sequence.");
+      return;
+    }
+    var index = indexOfSeq(offense);
+    if (index < 0) {
+      notify("Seq " + offense + " is not part of this replay.");
+      return;
+    }
+
+    var target = index;
+    var note = "";
+    if (!state.frames[index].cur) {
+      var forward = -1;
+      var backward = -1;
+      for (var i = 1; i < state.frames.length; i++) {
+        if (forward < 0 && state.frames[index + i] && state.frames[index + i].cur) { forward = index + i; }
+        if (backward < 0 && state.frames[index - i] && state.frames[index - i].cur) { backward = index - i; }
+      }
+      if (forward >= 0) { target = forward; }
+      else if (backward >= 0) { target = backward; }
+      else { notify("Seq " + offense + " has no event on the replay side."); return; }
+      note = " \u2014 seq " + offense + " has no replay event, jumped to the nearest one";
+    }
+
+    pause();
+    selectFrame(target, true);
+    notify("Jumped to seq " + state.frames[target].seq + note);
+  }
+  /* ---------- state diff ---------- */
+  function changedKeys(base, cur) {
+    var keys = [];
+    if (!base || !cur) { return keys; }
+    if (base.kind !== cur.kind) { keys.push("kind"); }
+    if (base.actor !== cur.actor) { keys.push("actor"); }
+    var b = isObj(base.payload) ? base.payload : {};
+    var c = isObj(cur.payload) ? cur.payload : {};
+    var seen = {};
+    Object.keys(b).forEach(function (k) { seen[k] = true; });
+    Object.keys(c).forEach(function (k) { seen[k] = true; });
+    Object.keys(seen).sort().forEach(function (k) {
+      if (stable(b[k]) !== stable(c[k])) { keys.push(k); }
+    });
+    return keys;
+  }
+  function diffCell(side, ev) {
+    var cell = el("div", "diff-cell");
+    cell.appendChild(el("span", "diff-side", side));
+    if (!ev) {
+      cell.appendChild(el("span", "empty-slot", side === "baseline" ? "not recorded" : "not replayed"));
+      return cell;
+    }
+    var body = ev.payload === undefined ? ev : ev.payload;
+    cell.appendChild(el("pre", null, pretty(body)));
+    return cell;
+  }
+  function diffRow(row) {
+    var wrap = el("div", "diff-row");
+    wrap.setAttribute("data-change", row.change);
+
+    var head = el("div", "diff-head");
+    head.appendChild(el("span", "seq-tag", "seq " + row.seq));
+    head.appendChild(el("span", "chip chip-" + row.change, row.change));
+    var keys = changedKeys(row.baseline, row.current);
+    if (keys.length) { head.appendChild(el("span", "diff-keys", keys.join(", "))); }
+    head.title = "Jump the timeline to this frame";
+    head.style.cursor = "pointer";
+    head.addEventListener("click", function () {
+      var index = indexOfSeq(row.seq);
+      if (index < 0) { notify("Seq " + row.seq + " is not part of this replay."); return; }
+      pause();
+      selectFrame(index, true);
+    });
+    wrap.appendChild(head);
+
+    var pair = el("div", "diff-pair");
+    pair.appendChild(diffCell("baseline", row.baseline));
+    pair.appendChild(diffCell("current", row.current));
+    wrap.appendChild(pair);
+    return wrap;
+  }
+  function renderStateDiff() {
+    var host = $("state-diff");
+    var all = state.data.diff.events;
+    var rows = all.filter(function (row) { return row.change && row.change !== "same"; });
+    var first = state.data.diff.first_divergence_seq;
+    host.innerHTML = "";
+
+    var summary = rows.length
+      ? rows.length + (rows.length === 1 ? " change" : " changes")
+      : "no divergence";
+    if (rows.length && first !== null && first !== undefined) {
+      summary += " \u00b7 first at seq " + first;
+    }
+    $("diff-summary").textContent = summary;
+
+    if (!rows.length) {
+      host.appendChild(el("div", "diff-empty",
+        "recorded and replayed events agree at payload level"));
+      return;
+    }
+    rows.forEach(function (row) { host.appendChild(diffRow(row)); });
+  }
+  /* ---------- header / labels ---------- */
+  function renderHeader() {
+    var header = state.data.header;
+    var fp = isObj(header.env_fingerprint) ? header.env_fingerprint : {};
+    var bits = [];
+    if (header.schema_version) { bits.push("schema " + header.schema_version); }
+    if (fp.model) { bits.push("model " + fp.model); }
+    if (fp.python) { bits.push("python " + fp.python); }
+    if (fp.agenttwin) { bits.push("agenttwin " + fp.agenttwin); }
+    if (fp.platform) { bits.push(fp.platform); }
+    if (fp.prompt_hash) { bits.push("prompt " + String(fp.prompt_hash).slice(0, 12)); }
+    if (header.seed !== undefined && header.seed !== null) { bits.push("seed " + header.seed); }
+
+    $("fp-line").textContent = bits.length ? bits.join(" \u00b7 ") : "no header recorded";
+    $("fp-json").textContent = Object.keys(header).length ? pretty(header) : "{}";
+  }
+  function renderLabels() {
+    var labels = state.data.labels;
+    $("label-baseline").textContent = labels.baseline || "baseline";
+    $("label-current").textContent = labels.current || "current";
+    $("count-baseline").textContent = String(state.data.baseline.length);
+    $("count-current").textContent = String(state.data.current.length);
+  }
+  /* ---------- theme / notice / fatal ---------- */
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    var button = $("theme-toggle");
+    button.textContent = theme === "dark" ? "Light theme" : "Dark theme";
+    button.setAttribute("aria-pressed", theme === "light" ? "true" : "false");
+  }
+
+  var noticeTimer = null;
+  function notify(message) {
+    var node = $("notice");
+    node.textContent = message;
+    node.hidden = false;
+    if (noticeTimer) { window.clearTimeout(noticeTimer); }
+    noticeTimer = window.setTimeout(function () { node.hidden = true; }, 3600);
+  }
+  function showFatal(message) {
+    $("shell").hidden = true;
+    $("error-message").textContent = message;
+    $("error-panel").hidden = false;
+  }
+  /* ---------- boot ---------- */
+  function boot() {
+    var data;
+    try {
+      data = normalize(readPayload());
+    } catch (error) {
+      showFatal(error && error.message ? error.message : String(error));
+      return;
+    }
+    state.data = data;
+    state.frames = buildFrames(data);
+
+    if (!state.frames.length) {
+      $("filter-note").textContent = "this trace contains no events";
+    }
+
+    $("trace-id").textContent = data.trace_id || "(no trace id)";
+    $("trace-id").setAttribute("title", data.trace_id || "trace id");
+    $("mode-chip").textContent = data.mode || "unknown mode";
+    document.title = "AgentTwin \u2014 replay" + (data.trace_id ? " " + data.trace_id : "");
+
+    renderLabels();
+    renderHeader();
+    renderKindFilters();
+    renderActorOptions();
+    renderColumns();
+    renderAssertions();
+    renderStateDiff();
+    applyTheme("dark");
+    updatePlayButtons();
+
+    $("error-panel").hidden = true;
+    $("shell").hidden = false;
+
+    if (state.frames.length) { selectFrame(0); } else { syncTransport(); }
+  }
+  /* ---------- wiring ---------- */
+  function wire() {
+    $("theme-toggle").addEventListener("click", function () {
+      applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
+    });
+
+    $("btn-play").addEventListener("click", function () { play(); });
+    $("btn-pause").addEventListener("click", function () { pause(); });
+    $("btn-prev").addEventListener("click", function () { stepBack(); });
+    $("btn-next").addEventListener("click", function () { pause(); stepForward(); });
+
+    $("speed").addEventListener("change", function () {
+      var value = parseFloat(this.value);
+      state.speed = value > 0 ? value : 1;
+      if (state.playing) { schedule(); }
+    });
+
+    $("scrubber").addEventListener("input", function () {
+      selectFrame(parseInt(this.value, 10) || 0);
+    });
+
+    $("actor-filter").addEventListener("input", function () {
+      state.actorQuery = String(this.value || "").trim().toLowerCase();
+      applyRowVisibility();
+    });
+
+    $("filter-reset").addEventListener("click", function () {
+      var inputs = $("filter-kinds").getElementsByTagName("input");
+      for (var i = 0; i < inputs.length; i++) {
+        inputs[i].checked = true;
+        state.kinds[inputs[i].value] = true;
+      }
+      $("actor-filter").value = "";
+      state.actorQuery = "";
+      applyRowVisibility();
+      notify("Filters reset.");
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) { return; }
+      var target = event.target || {};
+      var tag = String(target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "select" || tag === "textarea" || tag === "summary" ||
+          target.isContentEditable) { return; }
+
+      if (event.key === " " || event.key === "Spacebar" || event.code === "Space") {
+        event.preventDefault();
+        togglePlay();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        pause();
+        stepForward();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        pause();
+        stepBack();
+      }
+    });
+  }
+
+  try {
+    wire();
+    boot();
+  } catch (error) {
+    showFatal("Unexpected error while rendering this trace: " +
+      (error && error.message ? error.message : String(error)));
+  }
+}());
+</script>
+</body>
+</html>
