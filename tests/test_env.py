@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import types
+
 import pytest
 
+from agenttwin.adapters.openai_compatible import RECORD_OUT_ENV, RECORD_TRACE_ID_ENV
 from agenttwin.drift import FingerprintDrift
 from agenttwin.env import ReplaySession, TapeRecorder, Twin
 from agenttwin.fingerprint import capture
@@ -21,6 +24,20 @@ def looping_agent(rounds):
 
 def fake_llm(request):
     return {"text": f"ok:{request['prompt']}"}
+
+
+class FakeCompletions:
+    """The one SDK surface the L2 adapter models: create(**kwargs)."""
+
+    def create(self, **kwargs):
+        return {"id": "x", "model": kwargs.get("model")}
+
+
+class FakeClient:
+    """An openai-compatible client, duck-typed: nothing here imports the SDK."""
+
+    def __init__(self):
+        self.chat = types.SimpleNamespace(completions=FakeCompletions())
 
 
 def write_tape(path, fingerprint, *, with_terminal=True):
@@ -50,6 +67,19 @@ def test_record_returns_a_recorder_exposing_llm_and_tools(tape_dir):
     assert callable(recorder.llm)
     assert set(recorder.tools()) == {"shell"}
     assert isinstance(recorder.trace, Trace)
+
+
+def test_from_openai_compatible_is_the_zero_config_record_path(tape_dir, monkeypatch):
+    """CONTRACTS section 3 / design doc 4.2: one call opens a tape and returns a proxy."""
+    path = tape_dir / "l2.jsonl"
+    monkeypatch.setenv(RECORD_OUT_ENV, str(path))
+    monkeypatch.setenv(RECORD_TRACE_ID_ENV, "l2")
+    proxy = Twin.from_openai_compatible(FakeClient())
+    assert proxy.chat.completions.create(model="gpt-4o") == {"id": "x", "model": "gpt-4o"}
+    proxy.flush()
+    tape = Trace.load(path)
+    assert tape.header.trace_id == "l2"
+    assert [event.kind for event in tape.events] == ["llm_call", "terminal"]
 
 
 def test_recording_writes_one_terminal_event_on_a_clean_exit(tape_dir):
@@ -262,3 +292,24 @@ def test_policy_reaches_an_agent_that_declares_it(tape_dir):
     assert seen == [None]
     Twin.load(path).replay(agent, policy={"halt": True})
     assert seen[-1] == {"halt": True}
+
+
+def test_a_required_third_positional_replays_through_the_public_path(tape_dir):
+    """CONTRACTS section 3: the policy is passed whenever the signature accepts it."""
+    path = tape_dir / "required-policy.jsonl"
+    with Twin.record("required-policy", out=path, llm=fake_llm) as recorder:
+        recorder.llm({"prompt": "hi"})
+
+    class Agent:
+        def __init__(self):
+            self.answer = None
+
+        def run(self, llm, tools, policy):
+            self.answer = llm({"prompt": "hi"})
+            return (self.answer, policy)
+
+    agent = Agent()
+    report = Twin.load(path).replay(agent)
+    assert agent.answer == {"text": "ok:hi"}
+    assert report.divergent is False
+    assert report.misses == [] and report.drifts == []
