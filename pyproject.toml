@@ -28,4 +28,4 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-agenttwin = ["html/*.html"]
+agenttwin = ["html/*.html", "fixtures/*.jsonl"]
