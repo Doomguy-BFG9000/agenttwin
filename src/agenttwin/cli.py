@@ -121,6 +121,10 @@ def build_parser() -> argparse.ArgumentParser:
     diff.add_argument("baseline", metavar="A", help="the recorded tape")
     diff.add_argument("current", metavar="B", help="the tape to compare against A")
     diff.add_argument("--html", metavar="PATH", help="write the difference into the replayer")
+    diff.add_argument(
+        "--json", nargs="?", const="-", metavar="PATH",
+        help="write the diff as JSON to PATH, or stdout when PATH is omitted",
+    )
     diff.set_defaults(handler=_cmd_diff)
 
     doctor = commands.add_parser("doctor", help="diagnose one tape")
@@ -356,6 +360,19 @@ def _cmd_diff(args: argparse.Namespace) -> int:
     counts = {"same": 0, "changed": 0, "added": 0, "removed": 0}
     for row in difference.events:
         counts[row["change"]] = counts.get(row["change"], 0) + 1
+    exit_code = EXIT_OK if divergence is None else EXIT_FAIL
+    if args.html:
+        _write_html(Report(baseline=baseline, trace=current, results=[], mode="diff"), args.html)
+    if args.json is not None:
+        data = {**difference.to_dict(), "counts": counts}
+        text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+        if args.json == "-":
+            print(text, end="")
+            return exit_code
+        try:
+            Path(args.json).write_text(text, encoding="utf-8")
+        except OSError as exc:
+            raise _CliError(EXIT_USAGE, f"agenttwin: cannot write JSON to {args.json}: {exc}") from None
     print(f"first divergence seq: {'none' if divergence is None else divergence}")
     print(
         f"events: {len(difference.events)} total | same {counts['same']},"
@@ -367,9 +384,7 @@ def _cmd_diff(args: argparse.Namespace) -> int:
         fields = _changed_fields(row)
         suffix = f": {', '.join(fields)}" if fields else ""
         print(f"  seq {row['seq']} {row['change']}{suffix}")
-    if args.html:
-        _write_html(Report(baseline=baseline, trace=current, results=[], mode="diff"), args.html)
-    return EXIT_OK if divergence is None else EXIT_FAIL
+    return exit_code
 
 
 def _changed_fields(row: dict) -> list[str]:
