@@ -224,6 +224,24 @@ def test_exit_code_two_when_divergent_is_true():
     assert report.exit_code == 2
 
 
+def test_divergence_is_not_fatal_in_a_counterfactual():
+    # §9.36: the caller supplied the patch/policy that moved the trajectory, so the
+    # assertions are the verdict; a faithful replay keeps the 2 (test above).
+    report = make_report(divergent=True, mode="counterfactual")
+    assert report.exit_code == 0
+    text = report.markdown()
+    assert "verdict: PASS (exit code 0)" in text
+    assert "mode: counterfactual" in text
+    assert "DIVERGENT" not in text
+    assert "note: counterfactual replay" in text
+
+
+def test_a_counterfactual_still_fails_on_a_failing_assertion():
+    report = make_report(divergent=True, mode="counterfactual").assert_(Spec("budget", False))
+    assert report.exit_code == 1
+    assert "verdict: FAIL (exit code 1)" in report.markdown()
+
+
 def test_divergent_is_false_for_a_patched_replay_that_differs_from_its_baseline():
     # §9.18: divergent tracks the R-TERM fork, not "the tapes differ", so a
     # patched replay (changed payload at seq 0) must still exit 0.
