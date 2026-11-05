@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+from . import __version__
 from .diff import TraceDiff
 from .drift import DriftError
 from .redact import DEFAULT_PATTERNS
@@ -70,6 +71,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = _Parser(
         prog="agenttwin",
         description="Record one agent run, replay it forever (CONTRACTS v0.1).",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="print the package version and exit",
     )
     commands = parser.add_subparsers(dest="command", metavar="<command>", required=True)
 

@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+import agenttwin
 from agenttwin import Twin, cli
 from agenttwin.trace import Event, Trace
 
@@ -96,6 +97,11 @@ def test_help_exits_zero(capsys):
     out = capsys.readouterr().out
     for command in ("record", "replay", "diff", "doctor", "gallery"):
         assert command in out
+
+
+def test_version_prints_the_package_version(capsys):
+    assert cli.main(["--version"]) == 0
+    assert capsys.readouterr().out.strip() == f"agenttwin {agenttwin.__version__}"
 
 
 def test_gallery_help_exits_zero(capsys):

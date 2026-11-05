@@ -36,6 +36,10 @@ jobs:
       # to TMPDIR, so this workflow sets no temp-directory override on purpose.
       - name: Tests
         run: python -m pytest tests -q
+      # The Status section of both READMEs claims the console script runs; this
+      # is the step that makes that claim true on every platform in the matrix.
+      - name: Console script
+        run: agenttwin --version && agenttwin gallery list
 
   stdlib-only:
     name: stdlib-only import (${{ matrix.os }})
