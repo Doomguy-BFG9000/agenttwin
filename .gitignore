@@ -20,6 +20,10 @@ htmlcov/
 .venv/
 venv/
 
+# Local secrets: the PyPI token lives in %USERPROFILE%\.pypirc, never here
+.pypirc
+.env
+
 # Editors / OS noise
 .vscode/
 .idea/
