@@ -4,11 +4,17 @@
 
 **Agent 的 VCR。** 把一次 Agent 运行录成一条 tape，之后离线回放，变成能提交到 CI 的单测。
 
+[![PyPI](https://img.shields.io/pypi/v/agenttwin.svg)](https://pypi.org/project/agenttwin/)
+[![CI](https://github.com/ravenkernel/agenttwin/actions/workflows/ci.yml/badge.svg)](https://github.com/ravenkernel/agenttwin/actions/workflows/ci.yml)
+[![coverage floor](https://img.shields.io/badge/coverage-82%25%20floor-brightgreen.svg)](CONTRIBUTING.md)
+
 不是 trace 仪表盘，不是监控平台：没有服务、没有数据库、没有 dashboard，只有一条 JSONL 文件和一次普通的断言。
 
-![同一条失败 tape，改一个策略后全绿：离线回放器的前后对比](https://raw.githubusercontent.com/ravenkernel/agenttwin/main/assets/hero.gif)
+![同一条失败 tape，改一个策略后全绿：退出码 1 变成退出码 0](https://raw.githubusercontent.com/ravenkernel/agenttwin/main/assets/hero-short.gif)
 
-*同一条已提交的 tape 回放两次，全程不调模型：两条断言先红，改一个策略键后三条全绿。画面里看到的就是一个单文件 HTML，`file://` 直接打开。*
+*同一条已提交的 tape 回放两次，全程不调模型：两条断言先红，改一个策略键后三条全绿。画面里看到的就是一个单文件 HTML，`file://` 直接打开 —— [打开可交互的在线 Demo](https://ravenkernel.github.io/agenttwin/)，或看[四帧完整演示](https://raw.githubusercontent.com/ravenkernel/agenttwin/main/assets/hero-full.gif)。*
+
+**什么都不用装就能试。**[在线 Demo](https://ravenkernel.github.io/agenttwin/) 把这条 tape 回放两次、左右并排，并给出两次运行的差异。
 
 30 秒版本：
 

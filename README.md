@@ -4,11 +4,17 @@
 
 **The VCR for agents.** Record one agent run to a tape, replay it offline afterwards, and you have a unit test you can commit to CI.
 
+[![PyPI](https://img.shields.io/pypi/v/agenttwin.svg)](https://pypi.org/project/agenttwin/)
+[![CI](https://github.com/ravenkernel/agenttwin/actions/workflows/ci.yml/badge.svg)](https://github.com/ravenkernel/agenttwin/actions/workflows/ci.yml)
+[![coverage floor](https://img.shields.io/badge/coverage-82%25%20floor-brightgreen.svg)](CONTRIBUTING.md)
+
 Not a trace dashboard, not a monitoring platform: no service, no database, no dashboard, just one JSONL file and one ordinary assertion.
 
-![One failing tape, one policy change: the offline viewer, before and after](https://raw.githubusercontent.com/ravenkernel/agenttwin/main/assets/hero.gif)
+![Same tape, one policy change: exit 1 becomes exit 0](https://raw.githubusercontent.com/ravenkernel/agenttwin/main/assets/hero-short.gif)
 
-*One committed tape, replayed twice with no model call: two assertions fail, one policy key changes, all three pass. What you are looking at is a single HTML file, opened from `file://`.*
+*One committed tape, replayed twice with no model call: two assertions fail, one policy key changes, all three pass. What you are looking at is a single HTML file, opened from `file://` — [open the interactive demo](https://ravenkernel.github.io/agenttwin/), or watch the [four-frame walkthrough](https://raw.githubusercontent.com/ravenkernel/agenttwin/main/assets/hero-full.gif).*
+
+**Try it without installing anything.** [The online demo](https://ravenkernel.github.io/agenttwin/) replays this tape twice, side by side, and shows the diff between the two runs.
 
 The 30-second version:
 

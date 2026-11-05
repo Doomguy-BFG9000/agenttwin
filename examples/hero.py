@@ -10,11 +10,14 @@ build/hero/after.html) are single files you can open by double-clicking.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from agenttwin import Twin, gallery
 
-OUT = Path("build") / "hero"
+# tools/gen_demo_pages.py points this at docs/ so the published GitHub Pages
+# demo is the same replay, not a copy of it.
+OUT = Path(os.environ.get("AGENTTWIN_HERO_OUT", "build/hero"))
 
 FIXTURE = gallery.get("deathloop")
 
