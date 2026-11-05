@@ -24,6 +24,10 @@ venv/
 .pypirc
 .env
 
+# pip scratch dirs, created when no usable TMPDIR exists on this machine
+/pip-*/
+/tmp*/
+
 # Editors / OS noise
 .vscode/
 .idea/
