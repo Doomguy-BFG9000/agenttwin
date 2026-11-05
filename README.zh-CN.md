@@ -309,10 +309,10 @@ strict: no
 
 ## 状态
 
-0.1.0 已发布：[PyPI 上的 agenttwin](https://pypi.org/project/agenttwin/0.1.0/)，Apache-2.0，Python 3.10+。
+0.1.1 已发布：[PyPI 上的 agenttwin](https://pypi.org/project/agenttwin/0.1.1/)，Apache-2.0，Python 3.10+。每个版本改了什么见 [CHANGELOG.md](CHANGELOG.md)。
 
 - 已完成并有测试：录制/回放核心（`Twin.record` / `Twin.load`）、drift 检测、9 个断言工厂 + 组合子 + YAML 加载、`TraceDiff`、`Report`（JSON / Markdown / 单文件 HTML）、`agenttwin` 的五个子命令、openai-compatible adapter（鸭子类型，不 import SDK）、十个内置 fixture（五组 before / after）。
 - 已在 GitHub 上验证：[CI](https://github.com/ravenkernel/agenttwin/actions) 在每次 push 到 `main` 时运行，共八个 job：Ubuntu 上的 Python 3.10–3.13、macOS 与 Windows 上的 3.12，加两个先卸载 PyYAML 的 stdlib-only import 检查，每个 job 还都跑一次控制台脚本。首次运行失败在一条用了 `platform: linux` 的 fixture 上——它恰好与 Ubuntu runner 上真实的 `sys.platform` 相同；那是测试的 bug，已在 `6c5dae7` 修掉，之后全绿。
-- 从干净安装验证过：在空 venv 里从公共索引 `python -m pip install agenttwin`，得到 `agenttwin --version` → `agenttwin 0.1.0`、`agenttwin gallery list` 的十个 fixture、包内的单文件 HTML 回放器，以及 `gallery run repaired` → 0、`gallery run deathloop` → 1。在仓库之外的空目录里跑一遍录制 → 离线回放 → `.html()`，产出一份 68,770 字节的报告，占位符已填、内部没有任何外部资源。
+- 从干净安装验证过：在空 venv 里从公共索引 `python -m pip install agenttwin`，得到 `agenttwin --version` → `agenttwin 0.1.1`、`agenttwin gallery list` 的十个 fixture、包内的单文件 HTML 回放器，以及 `gallery run repaired` → 0、`gallery run deathloop` → 1。在仓库之外的空目录里跑一遍录制 → 离线回放 → `.html()`，产出的报告占位符已填、内部没有任何外部资源。
 - 还没做：覆盖率门槛、任何托管服务或 dashboard。上面所有示例都用 `PYTHONPATH=src` 运行，不装任何东西也能跑。
 
