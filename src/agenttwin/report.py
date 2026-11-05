@@ -199,11 +199,19 @@ class Report:
         ]
 
     def _fingerprint_lines(self) -> list[str]:
-        fingerprint = self.trace.header.env_fingerprint
-        lines = [
+        fingerprint = self.trace.header.env_fingerprint or {}
+        # Match renderHeader's field order while keeping Markdown ASCII-only.
+        summary = [f"schema {self.trace.header.schema_version}"]
+        summary.extend(
+            f"{field} {fingerprint[field]}"
+            for field in ("model", "python", "agenttwin")
+            if fingerprint.get(field)
+        )
+        lines = ["fingerprint: " + " | ".join(summary)]
+        lines.extend(
             f"{field}: {_scalar(fingerprint.get(field))}"
             for field in ("model", "prompt_hash", "python", "agenttwin", "platform")
-        ]
+        )
         deps = fingerprint.get("deps") or {}
         lines.append(
             "deps: " + (", ".join(f"{name}={deps[name]}" for name in sorted(deps)) if deps else "none")
