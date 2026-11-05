@@ -321,6 +321,19 @@ def test_replay_maps_a_drift_to_two(tape_dir, agents, capsys):
 
 # --- diff -------------------------------------------------------------------
 
+@pytest.mark.parametrize("fixture_id,expected_code", [("deathloop", 1), ("repaired", 0)])
+def test_gallery_run_html_retains_markdown_and_exit_code(tape_dir, capsys, fixture_id, expected_code):
+    assert cli.main(["gallery", "run", fixture_id]) == expected_code
+    original = capsys.readouterr()
+    target = tape_dir / "reports" / f"{fixture_id}.html"
+    assert cli.main(["gallery", "run", fixture_id, "--html", str(target)]) == expected_code
+    assert capsys.readouterr() == original
+    html = target.read_text(encoding="utf-8")
+    assert "__AGENTTWIN_PAYLOAD__" not in html
+    assert "<script" in html and "</html>" in html
+    assert not list(target.parent.glob("*.js"))
+    assert not list(target.parent.glob("*.css"))
+
 
 def test_diff_of_a_tape_with_itself_exits_zero(tape_dir, capsys):
     tape = record_tape(tape_dir / "same.jsonl")
