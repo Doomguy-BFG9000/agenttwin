@@ -1,4 +1,4 @@
-"""The shipped fixture gallery (design doc section 8): ten real tapes, five stories.
+"""The shipped fixture gallery (design doc section 8): twelve real tapes, six stories.
 
 Gallery is the first flagship artefact: the demo is not a screenshot but a replayed
 recording.  Each fixture pairs a committed tape with the very controller that
@@ -25,6 +25,8 @@ between the before tape and the after tape is the policy dict:
                 (output_schema); full_receipt returns the whole receipt.
 * shipping   -- double_shipping adds shipping the price already includes
                 (state_invariant); correct_shipping does not.
+* termination -- late_stop keeps polling a completed export (terminates_within);
+                 early_stop returns on the first completed observation.
 
 The fake llm and fake tools below are what recorded the tapes (drive them with
 tools/gen_fixtures.py); each is a pure function of its input, so regenerating a
@@ -52,8 +54,10 @@ __all__ = [
     "correct_shipping_agent",
     "deathloop_agent",
     "double_shipping_agent",
+    "early_stop_agent",
     "full_receipt_agent",
     "get",
+    "late_stop_agent",
     "list_fixtures",
     "partial_receipt_agent",
     "repaired_agent",
@@ -420,6 +424,55 @@ _SHIPPING_ASSERTIONS: tuple = (
 )
 
 
+# --- story 6: the export poller that ignores completion --------------------
+
+EXPORT_GOAL: str = "wait for the export to finish"
+LATE_STOP_POLICY: dict[str, Any] = {"max_checks": 3, "stop_on_done": False}
+EARLY_STOP_POLICY: dict[str, Any] = {"max_checks": 3, "stop_on_done": True}
+
+
+def _fake_export_status() -> dict:
+    """An already completed export: no job execution, clock or network."""
+    return {"done": True, "rows": 12}
+
+
+def _fake_export_llm(request: dict) -> dict:
+    """Recognize completion from the observation, regardless of the stop policy."""
+    return {"done": request["observation"]["done"]}
+
+
+def _export_tools() -> dict[str, Callable[..., Any]]:
+    """The tool mapping the termination story was recorded with."""
+    return {"export_status": _fake_export_status}
+
+
+def _export_controller(llm: Callable[[dict], Any], tools: Any, policy: dict) -> dict:
+    """Poll until completion is honored or the finite recording guard is reached."""
+    for check in range(1, int(policy["max_checks"]) + 1):
+        observation = tools["export_status"]()
+        plan = llm({"goal": EXPORT_GOAL, "check": check, "observation": observation})
+        if policy["stop_on_done"] and plan["done"]:
+            return {"status": "complete", "checks": check}
+    return {"status": "gave_up", "checks": int(policy["max_checks"])}
+
+
+def late_stop_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The controller that keeps polling after the export has completed."""
+    return _export_controller(llm, tools, dict(policy or LATE_STOP_POLICY))
+
+
+def early_stop_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The same controller under the policy that stops on completion."""
+    return _export_controller(llm, tools, dict(policy or EARLY_STOP_POLICY))
+
+
+_TERMINATION_ASSERTIONS: tuple = (
+    asserts.terminates_within(9),
+    asserts.max_repeats("export_status", 3),
+    asserts.budget_within(max_calls=6),
+)
+
+
 # --- the gallery -----------------------------------------------------------
 
 # Presentation order is tape order: each story's before tape, then its after tape.
@@ -573,6 +626,36 @@ _GALLERY: tuple[Fixture, ...] = (
         asserts=_SHIPPING_ASSERTIONS,
         model="fake-shipping-v0",
         commands=("python -m pytest tests/test_gallery.py -q -k correct_shipping",),
+    ),
+    Fixture(
+        id="late_stop",
+        title="Export poller that ignores completion",
+        description=(
+            "Polls an already completed export three times and hits the recording guard: "
+            "the terminal at seq 9 fails terminates_within(9)."
+        ),
+        tape=FIXTURE_DIR / "late_stop.jsonl",
+        agent=late_stop_agent,
+        llm=_fake_export_llm,
+        make_tools=_export_tools,
+        asserts=_TERMINATION_ASSERTIONS,
+        model="fake-export-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k late_stop",),
+    ),
+    Fixture(
+        id="early_stop",
+        title="Export poller that stops on completion",
+        description=(
+            "The same controller under a policy that stops on the first completed observation: "
+            "the terminal at seq 3 is within n=9 and every assertion passes."
+        ),
+        tape=FIXTURE_DIR / "early_stop.jsonl",
+        agent=early_stop_agent,
+        llm=_fake_export_llm,
+        make_tools=_export_tools,
+        asserts=_TERMINATION_ASSERTIONS,
+        model="fake-export-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k early_stop",),
     ),
 )
 

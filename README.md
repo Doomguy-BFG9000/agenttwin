@@ -276,7 +276,7 @@ Python 3.10+, zero third-party dependencies at runtime: `pyproject.toml` declare
 
 ### Command line
 
-Once installed, `agenttwin` and `python -m agenttwin` are the same entry point (`agenttwin.cli:main`), with five subcommands: `record` / `replay` / `diff` / `doctor` / `gallery`. To see the ten fixtures shipped with the repo (five before/after pairs, one per assertion family), without recording a tape first:
+Once installed, `agenttwin` and `python -m agenttwin` are the same entry point (`agenttwin.cli:main`), with five subcommands: `record` / `replay` / `diff` / `doctor` / `gallery`. To see the twelve fixtures shipped with the repo (six before/after pairs, one per assertion family), without recording a tape first:
 
 ```bash
 python -m agenttwin gallery list
@@ -296,6 +296,8 @@ partial_receipt  Receipt without the charged total
 full_receipt  Receipt that carries the total it charged
 double_shipping  Order that pays shipping twice
 correct_shipping  Order priced once
+late_stop  Export poller that ignores completion
+early_stop  Export poller that stops on completion
 
 # AgentTwin report: gallery-deathloop
 
@@ -311,13 +313,15 @@ strict: no
 | never_calls(shell, args_contains='rm -rf') | PASS | no call of shell matches | - |
 ```
 
-`gallery run deathloop` exits 1 and `gallery run repaired` exits 0: same assertion set, and the only difference is whether that agent repeats the same tool call a thirteenth time. The other four pairs are the same shape: `cleanup` / `cleanup_guarded` (`never_calls`), `write_first` / `search_first` (`call_order`), `partial_receipt` / `full_receipt` (`output_schema`), `double_shipping` / `correct_shipping` (`state_invariant`). `python -m agenttwin <command> --help` shows the arguments of each command.
+`gallery run deathloop` exits 1 and `gallery run repaired` exits 0: same assertion set, and the only difference is whether the agent stops after the first failed observation. The other five pairs are the same shape: `cleanup` / `cleanup_guarded` (`never_calls`), `write_first` / `search_first` (`call_order`), `partial_receipt` / `full_receipt` (`output_schema`), `double_shipping` / `correct_shipping` (`state_invariant`), `late_stop` / `early_stop` (`terminates_within`). `python -m agenttwin <command> --help` shows the arguments of each command.
+
+`python -m agenttwin gallery run late_stop` exits 1: the export is already complete, but the controller keeps polling until its finite guard returns at seq 9. `python -m agenttwin gallery run early_stop` exits 0: changing only `stop_on_done` returns at seq 3. Both use `terminates_within(9)`, which requires the terminal seq to be strictly less than 9; the repeat and call budgets pass in both halves.
 
 ## Status
 
 0.1.1 is published: [agenttwin on PyPI](https://pypi.org/project/agenttwin/0.1.1/), Apache-2.0, Python 3.10+. What changed in each release: [CHANGELOG.md](CHANGELOG.md).
 
-- Done and tested: the record/replay core (`Twin.record` / `Twin.load`), drift detection, 9 assertion factories plus the combinators and YAML loading, `TraceDiff`, `Report` (JSON / Markdown / single-file HTML), the five `agenttwin` subcommands, the openai-compatible adapter (duck-typed, no SDK import), and the ten bundled fixtures (five before/after pairs).
+- Done and tested: the record/replay core (`Twin.record` / `Twin.load`), drift detection, 9 assertion factories plus the combinators and YAML loading, `TraceDiff`, `Report` (JSON / Markdown / single-file HTML), the five `agenttwin` subcommands, the openai-compatible adapter (duck-typed, no SDK import), and the twelve bundled fixtures (six before/after pairs).
 - Verified on GitHub: [CI](https://github.com/ravenkernel/agenttwin/actions) runs on every push to `main` — nine jobs: Python 3.10–3.13 on Ubuntu, 3.12 on macOS and Windows, two stdlib-only import checks that uninstall PyYAML first, and a coverage job, plus a console-script step in each tests job. The first run failed on a fixture that used `platform: linux` and therefore matched the real `sys.platform` on the Ubuntu runners; that was a test bug, fixed in `6c5dae7`, and the suite has been green since.
 - Verified from a clean install: `python -m pip install agenttwin` into an empty venv from the public index gives `agenttwin --version` → `agenttwin 0.1.1`, all ten fixtures from `agenttwin gallery list`, the bundled single-file HTML replayer, `gallery run repaired` → 0 and `gallery run deathloop` → 1. A record → offline replay → `.html()` loop run from an empty directory outside the repository produced a report with no unfilled placeholder and no external resource in it.
 - Coverage floor: 82% of statements, declared once in `pyproject.toml` (`[tool.coverage.report] fail_under`) and enforced by the `coverage` CI job, which fails the build when the number drops below it. The suite currently measures 94%.
