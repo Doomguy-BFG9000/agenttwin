@@ -41,6 +41,26 @@ jobs:
       - name: Console script
         run: agenttwin --version && agenttwin gallery list
 
+  # Both READMEs promise an 82% statement floor. The number lives in
+  # pyproject.toml ([tool.coverage.report] fail_under) and is deliberately not
+  # repeated here, so the gate has one home; "coverage report" exits non-zero
+  # when the floor is missed.
+  coverage:
+    name: coverage gate (ubuntu-latest, py3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install (editable, with the optional extras)
+        run: 'python -m pip install -e ".[yaml,dev]"'
+      - name: Tests under coverage
+        run: python -m coverage run -m pytest tests -q
+      - name: Coverage report (fails under the declared floor)
+        run: python -m coverage report
+
   stdlib-only:
     name: stdlib-only import (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
