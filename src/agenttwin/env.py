@@ -139,6 +139,7 @@ class TapeRecorder:
         self._tools = RecordingToolSet(self.trace, dict(tools or {}), redactor=redactor)
         self._returned: Any = None
         self._closed = False
+        self._noted_redactions = 0
 
     @property
     def llm(self) -> RecordingLLM:
@@ -160,6 +161,20 @@ class TapeRecorder:
     def returned(self, value: Any) -> None:
         """Hand the agent return value to the recorder; a dict overrides the folded state."""
         self._returned = value
+
+    def note_redactions(self, count: int) -> None:
+        """CONTRACTS 9.28 -- substitutions a writer made outside the recording proxies.
+
+        The adapter scrubs its own previews and appends straight to trace, so the
+        proxies never see those substitutions and the header would claim
+        redacted=0.  Called zero or more times; the total joins the proxy counts
+        when the header is rebuilt on exit.
+
+        A caller-held Trace (wrap(client, tape=trace) with no recorder) is not
+        retroactively recounted: that header is already final, and nothing here
+        rewrites it.
+        """
+        self._noted_redactions += int(count)
 
     def __enter__(self) -> "TapeRecorder":
         return self
@@ -196,7 +211,8 @@ class TapeRecorder:
             seed=header.seed,
             env_fingerprint=header.env_fingerprint,
             redaction=_redaction_header(
-                self.redactor, self._llm.redacted + self._tools.redacted
+                self.redactor,
+                self._llm.redacted + self._tools.redacted + self._noted_redactions,
             ),
         )
         self.trace.save(self.out)

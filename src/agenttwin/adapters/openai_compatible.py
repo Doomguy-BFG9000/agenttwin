@@ -41,9 +41,15 @@ def wrap(client: Any, tape: Any = None, *, model: str | None = None) -> Any:
 
     tape is a TapeRecorder from Twin.record() or a Trace; None keeps the proxy
     transparent.  model names the model for calls whose kwargs omit it.
+
+    A TapeRecorder is told the substitutions this proxy makes, so its header
+    counts them (CONTRACTS 9.28).  A bare Trace's header is already final and is
+    never retroactively recounted: with no recorder there is nothing to rebuild it.
     """
     _require_client(client)
-    return _RecordingClient(client, _trace_of(tape), _redactor_of(tape), model)
+    return _RecordingClient(
+        client, _trace_of(tape), _redactor_of(tape), model, _note_of(tape)
+    )
 
 
 def install(
@@ -129,17 +135,31 @@ def _redactor_of(tape: Any) -> Any:
     return Redactor()
 
 
+def _note_of(tape: Any) -> Any:
+    """The recorder's redaction counter, or None for a bare Trace (CONTRACTS 9.28)."""
+    note = getattr(tape, "note_redactions", None)
+    return note if callable(note) else None
+
+
 # --- the proxies -----------------------------------------------------------
 
 
 class _RecordingClient:
     """A proxy over an openai-compatible client: create() records, the rest delegates."""
 
-    def __init__(self, client: Any, trace: Trace | None, redactor: Any, model: str | None) -> None:
+    def __init__(
+        self,
+        client: Any,
+        trace: Trace | None,
+        redactor: Any,
+        model: str | None,
+        note: Any = None,
+    ) -> None:
         self._client = client
         self._trace = trace
         self._redactor = redactor
         self._model = model
+        self._note = note
         self._chat = _ChatProxy(self)
 
     @property
@@ -181,7 +201,7 @@ class _RecordingClient:
             model = self._model
         if model is not None:
             payload["model"] = model
-        return _scrub("llm_call", payload, self._redactor)
+        return _scrub("llm_call", payload, self._redactor, self._note)
 
 
 class _ChatProxy:
@@ -219,7 +239,9 @@ class _InstalledClient(_RecordingClient):
 
     def __init__(self, client: Any, recorder: TapeRecorder, model: str | None) -> None:
         self._recorder = recorder
-        super().__init__(client, recorder.trace, _redactor_of(recorder), model)
+        super().__init__(
+            client, recorder.trace, _redactor_of(recorder), model, _note_of(recorder)
+        )
 
     def flush(self) -> None:
         """Write the tape now, terminal event included; calling it twice is harmless."""
@@ -229,15 +251,20 @@ class _InstalledClient(_RecordingClient):
 # --- payload helpers -------------------------------------------------------
 
 
-def _scrub(kind: str, payload: dict, redactor: Any) -> dict:
+def _scrub(kind: str, payload: dict, redactor: Any, note: Any = None) -> dict:
     """CONTRACTS 9.20 -- hashes stay verbatim, previews are scrubbed then truncated.
 
     A sha256 is itself a 32+ hex run, so redaction would otherwise rewrite the
     very value replay compares; proxy.py splits the two for the same reason.
+
+    note, when given, receives the substitution count so the tape header can
+    report it (CONTRACTS 9.28); a bare Trace has no recorder to tell.
     """
     hashes = {key: value for key, value in payload.items() if key.endswith("_hash")}
     scrub = {key: value for key, value in payload.items() if not key.endswith("_hash")}
-    scrubbed, _count = redactor.payload(kind, scrub)
+    scrubbed, count = redactor.payload(kind, scrub)
+    if note is not None:
+        note(count)
     scrubbed.update(hashes)
     for key, value in scrubbed.items():
         if key.endswith("_preview") and isinstance(value, str) and len(value) > PREVIEW_LIMIT:
