@@ -9,6 +9,9 @@ stand in for. Nothing here needs a real replay: Report is a pure view.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
+
+import pytest
 
 from agenttwin.asserts import AssertionResult
 from agenttwin.report import Report
@@ -339,6 +342,45 @@ def test_markdown_reports_verdict_table_diff_fingerprint_and_redaction():
     assert "python: 3.12" in text
     assert "deps: httpx=0.27.0" in text
     assert "this tape redacted 2 secrets" in text
+
+
+def test_markdown_fingerprint_summary_uses_trace_values_in_html_viewer_order():
+    report = make_report()
+    report.trace.header = replace(
+        report.trace.header,
+        schema_version="recorded-schema",
+        env_fingerprint={"agenttwin": "0.2.7", "python": "3.11.9", "model": "recorded-model"},
+    )
+    before = report.json()
+
+    text = report.markdown()
+
+    assert (
+        "## Fingerprint\n\nfingerprint: schema recorded-schema | model recorded-model "
+        "| python 3.11.9 | agenttwin 0.2.7\n"
+    ) in text
+    assert report.json() == before
+
+
+@pytest.mark.parametrize(
+    ("fingerprint", "suffix"),
+    [
+        (None, ""),
+        ({}, ""),
+        ({"model": None, "python": "", "agenttwin": None}, ""),
+        ({"python": "3.11"}, " | python 3.11"),
+        ({"agenttwin": "0.1.1", "model": "fake-model"}, " | model fake-model | agenttwin 0.1.1"),
+    ],
+)
+def test_markdown_fingerprint_summary_handles_missing_and_empty_values(fingerprint, suffix):
+    report = make_report()
+    report.trace.header = replace(report.trace.header, env_fingerprint=fingerprint)
+
+    text = report.markdown()
+
+    assert f"## Fingerprint\n\nfingerprint: schema {SCHEMA_VERSION}{suffix}\n" in text
+    assert "deps: none" in text
+    assert "## Redaction" in text
 
 
 def test_markdown_failure_row_and_verdict():
