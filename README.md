@@ -264,6 +264,6 @@ strict: no
 0.1.0 是仓库里的版本号，不是发布号：还没有对外发布。
 
 - 已完成并有测试：录制/回放核心（`Twin.record` / `Twin.load`）、drift 检测、9 个断言工厂 + 组合子 + YAML 加载、`TraceDiff`、`Report`（JSON / Markdown / 单文件 HTML）、`agenttwin` 的五个子命令、openai-compatible adapter（鸭子类型，不 import SDK）、两个内置 fixture。
-- 未验证：`.github/workflows/ci.yml` 只在本地解析过 YAML，没有在 GitHub 上真正跑过。
+- 未验证：`.github/workflows/ci.yml` 只在本地解析过 YAML，没有在 GitHub 上真正跑过；本机沙箱装不了包，所以示例都用 `PYTHONPATH=src` 跑，`agenttwin` 控制台脚本由 `pyproject.toml` 声明但没真正执行过（`python -m agenttwin` 跑过）。
 - 还没做：PyPI 发布、覆盖率门槛、任何托管服务或 dashboard。
 
