@@ -5,7 +5,8 @@ are not smoke tests: they judge each committed tape with the very controller tha
 recorded it (CONTRACTS section 3 -- Record and Replay inject their own llm/tools,
 so the same callable runs in both modes), and they pin the claims the gallery
 makes: deathloop fails the shared assertions, repaired passes them, both replay
-offline, and the committed bytes are exactly what the build script records.
+offline, and every committed line is still what tools/gen_fixtures.py records -- the
+machine fingerprint aside, which CONTRACTS 9.21 keeps non-fatal.
 
 CONTRACTS 9.17: pytest tmp_path is unusable here, every scratch path goes through
 the tape_dir fixture from tests/conftest.py.
@@ -23,7 +24,7 @@ import pytest
 
 from agenttwin import Twin, gallery
 from agenttwin.redact import DEFAULT_PATTERNS
-from agenttwin.trace import Trace
+from agenttwin.trace import Trace, canonical_json
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -43,9 +44,9 @@ def judged(fixture: gallery.Fixture):
     return report
 
 
-def build_script():
-    """Import build/gen_fixtures.py, the single producer of the committed tapes."""
-    path = REPO_ROOT / "build" / "gen_fixtures.py"
+def generator():
+    """Import tools/gen_fixtures.py, the single producer of the committed tapes."""
+    path = REPO_ROOT / "tools" / "gen_fixtures.py"
     spec = importlib.util.spec_from_file_location("gen_fixtures", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -217,10 +218,89 @@ def test_committed_bytes_carry_no_default_redaction_match_and_no_path(fixture_id
             assert key.lower() not in {"timestamp", "time", "ts", "date", "created_at"}
 
 
-@pytest.mark.parametrize("fixture_id", ["deathloop", "repaired"])
-def test_the_build_script_regenerates_the_committed_bytes_exactly(fixture_id, tape_dir):
-    fixture = gallery.get(fixture_id)
-    regenerated = build_script().record(fixture, out_dir=tape_dir)
+def tape_line_seq(line: str):
+    """The seq carried by one tape line, or None for the header and for garbage."""
+    try:
+        payload = json.loads(line)
+    except ValueError:
+        return None
+    return payload.get("seq") if isinstance(payload, dict) else None
 
-    assert regenerated.read_bytes() == fixture.tape.read_bytes()
+
+def describe_line(index: int, committed_line: str, regenerated_line: str) -> str:
+    """Name one differing line: its 1-based number, its seq, and where the bytes part.
+
+    Line 1 is the header and carries no seq, so the seq annotation appears only on an
+    event line -- which is the coordinate the rest of the suite talks in.
+    """
+    seq = tape_line_seq(regenerated_line)
+    if seq is None:
+        seq = tape_line_seq(committed_line)
+    shared = min(len(committed_line), len(regenerated_line))
+    column = next(
+        (at for at in range(shared) if committed_line[at] != regenerated_line[at]),
+        shared,
+    )
+    where = f"line {index + 1}" if seq is None else f"line {index + 1} (seq {seq})"
+    return (
+        f"{where} column {column + 1}: committed={committed_line[:160]!r} "
+        f"regenerated={regenerated_line[:160]!r}"
+    )
+
+
+def first_line_mismatch(committed: list, regenerated: list):
+    """Describe the first differing line; None when the two tapes are line-identical."""
+    shared = min(len(committed), len(regenerated))
+    for index in range(shared):
+        if committed[index] != regenerated[index]:
+            return describe_line(index, committed[index], regenerated[index])
+    if len(committed) == len(regenerated):
+        return None
+    longer_side = "committed" if len(committed) > len(regenerated) else "regenerated"
+    longer = committed if len(committed) > len(regenerated) else regenerated
+    extra = longer[shared]
+    seq = tape_line_seq(extra)
+    where = f"line {shared + 1}" if seq is None else f"line {shared + 1} (seq {seq})"
+    return f"{where}: present only in the {longer_side} tape -> {extra[:160]!r}"
+
+
+@pytest.mark.parametrize("fixture_id", ["deathloop", "repaired"])
+def test_the_generator_reproduces_every_committed_line(fixture_id, tape_dir):
+    """Regenerate with tools/gen_fixtures.py and compare the committed tape line by line.
+
+    env_fingerprint records the machine that ran the generator -- python, platform,
+    deps -- and CONTRACTS 9.21 deliberately makes those non-fatal so one committed
+    fixture set survives the 3.10-3.13 matrix. That one header value is therefore
+    swapped back to the committed one before the header is compared; the committed
+    header is separately proved canonical (CONTRACTS 1.3), so the swap cannot hide a
+    serializer change, and every event line is compared untouched.
+    """
+    fixture = gallery.get(fixture_id)
+    regenerated = generator().record(fixture, out_dir=tape_dir)
+
+    committed_text = fixture.tape.read_text(encoding="utf-8")
+    regenerated_text = regenerated.read_text(encoding="utf-8")
+    assert committed_text.endswith("\n") and regenerated_text.endswith("\n"), (
+        "a tape ends with exactly one LF (CONTRACTS 1)"
+    )
+    committed_lines = committed_text.splitlines()
+    regenerated_lines = regenerated_text.splitlines()
+
+    committed_header = json.loads(committed_lines[0])
+    assert canonical_json(committed_header) == committed_lines[0], (
+        f"line 1: the committed header is not canonical JSON -> {committed_lines[0]!r}"
+    )
+
+    regenerated_header = json.loads(regenerated_lines[0])
+    regenerated_header["env_fingerprint"] = committed_header["env_fingerprint"]
+    normalized_header = canonical_json(regenerated_header)
+    assert normalized_header == committed_lines[0], (
+        "line 1: the header differs beyond env_fingerprint -> "
+        f"committed={committed_lines[0]!r} regenerated={normalized_header!r}"
+    )
+
+    mismatch = first_line_mismatch(
+        committed_lines, [committed_lines[0], *regenerated_lines[1:]]
+    )
+    assert mismatch is None, mismatch
     assert regenerated.stat().st_size < 8 * 1024

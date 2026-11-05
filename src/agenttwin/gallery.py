@@ -18,8 +18,9 @@ the failed observation and reruns one shell command six times; repaired stops on
 that first failed observation and never reaches the shell tool at all.
 
 The fake llm and fake tools below are what recorded the tapes (drive them with
-build/gen_fixtures.py); each is a pure function of its input, so regenerating a
-tape reproduces its bytes exactly.
+tools/gen_fixtures.py); each is a pure function of its input, so regenerating a
+tape reproduces every event line exactly -- only env_fingerprint in the header
+still remembers the machine that ran the generator.
 """
 
 from __future__ import annotations
