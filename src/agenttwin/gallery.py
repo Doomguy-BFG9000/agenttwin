@@ -30,8 +30,8 @@ between the before tape and the after tape is the policy dict:
 
 The fake llm and fake tools below are what recorded the tapes (drive them with
 tools/gen_fixtures.py); each is a pure function of its input, so regenerating a
-tape reproduces every event line exactly -- only env_fingerprint in the header
-still remembers the machine that ran the generator.  A Fixture carries its own
+tape reproduces every event line exactly. The generator retains the original
+recording's env_fingerprint when regenerating a committed fixture. A Fixture carries its own
 llm and tool factory: that is what keeps the generator a ten-line loop instead of
 a switch over story names, and what stops a new tape being recorded against the
 wrong fakes.

@@ -420,15 +420,12 @@ def first_line_mismatch(committed: list, regenerated: list):
 def test_the_generator_reproduces_every_committed_line(fixture_id, tape_dir):
     """Regenerate with tools/gen_fixtures.py and compare the committed tape line by line.
 
-    env_fingerprint records the machine that ran the generator -- python, platform,
-    deps -- and CONTRACTS 9.21 deliberately makes those non-fatal so one committed
-    fixture set survives the 3.10-3.13 matrix. That one header value is therefore
-    swapped back to the committed one before the header is compared; the committed
-    header is separately proved canonical (CONTRACTS 1.3), so the swap cannot hide a
-    serializer change, and every event line is compared untouched.
+    The generator retains the original recording's fingerprint, so regeneration
+    must reproduce the entire file even on a different host or package version.
     """
     fixture = gallery.get(fixture_id)
     regenerated = generator().record(fixture, out_dir=tape_dir)
+    assert regenerated.read_bytes() == fixture.tape.read_bytes()
 
     committed_text = fixture.tape.read_text(encoding="utf-8")
     regenerated_text = regenerated.read_text(encoding="utf-8")
@@ -444,7 +441,6 @@ def test_the_generator_reproduces_every_committed_line(fixture_id, tape_dir):
     )
 
     regenerated_header = json.loads(regenerated_lines[0])
-    regenerated_header["env_fingerprint"] = committed_header["env_fingerprint"]
     normalized_header = canonical_json(regenerated_header)
     assert normalized_header == committed_lines[0], (
         "line 1: the header differs beyond env_fingerprint -> "
@@ -452,7 +448,7 @@ def test_the_generator_reproduces_every_committed_line(fixture_id, tape_dir):
     )
 
     mismatch = first_line_mismatch(
-        committed_lines, [committed_lines[0], *regenerated_lines[1:]]
+        committed_lines, regenerated_lines
     )
     assert mismatch is None, mismatch
     assert regenerated.stat().st_size < 8 * 1024
