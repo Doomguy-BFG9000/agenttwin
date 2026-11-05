@@ -78,7 +78,12 @@ class Report:
     @property
     def exit_code(self) -> int:
         """CONTRACTS §6 — 2 beats 1 beats 0, and a soft result never moves it."""
-        if self.drifts or self.misses or self.divergent:
+        if self.drifts or self.misses:
+            return 2
+        # §9.36: in a faithful replay a short trajectory means the controller no
+        # longer reproduces the run, and that stays fatal; in a counterfactual the
+        # caller asked for the different trajectory, so the assertions decide.
+        if self.divergent and self.mode != "counterfactual":
             return 2
         for index, result in enumerate(self.results):
             if index < len(self._soft) and self._soft[index]:
@@ -126,12 +131,21 @@ class Report:
             f"mode: {self.mode}",
             f"divergent: {_yes_no(self.divergent)}",
             f"strict: {_yes_no(self.strict)}",
-            "",
-            "## Assertions",
-            "",
-            "| name | status | detail | first_offense_seq |",
-            "| --- | --- | --- | --- |",
         ]
+        if self.mode == "counterfactual":
+            lines.append(
+                "note: counterfactual replay (a patch or an explicit policy was supplied): "
+                "the trajectory is expected to leave the recorded one, so the assertions decide the exit code"
+            )
+        lines.extend(
+            [
+                "",
+                "## Assertions",
+                "",
+                "| name | status | detail | first_offense_seq |",
+                "| --- | --- | --- | --- |",
+            ]
+        )
         for row in self._result_rows():
             lines.append(
                 f"| {_cell(row['name'])} | {row['status']} | {_cell(row['detail'])} "
@@ -154,7 +168,7 @@ class Report:
             return "DRIFT"
         if self.misses:
             return "TAPE MISS"
-        if self.divergent:
+        if self.divergent and self.mode != "counterfactual":
             return "DIVERGENT"
         return "FAIL" if self.exit_code else "PASS"
 

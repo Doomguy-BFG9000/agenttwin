@@ -321,6 +321,33 @@ def test_policy_reaches_an_agent_that_declares_it(tape_dir):
     assert seen[-1] == {"halt": True}
 
 
+def test_a_policy_counterfactual_is_judged_by_its_assertions(tape_dir):
+    """CONTRACTS 9.36: leaving the tape early is the point of a what-if run."""
+    path = tape_dir / "counterfactual.jsonl"
+
+    def looping(llm, tools, policy=None):
+        llm({"prompt": "hi"})
+        llm({"prompt": "hi again"})
+        return {"steps": 2}
+
+    with Twin.record("counterfactual", out=path, llm=fake_llm) as recorder:
+        looping(recorder.llm, recorder.tools())
+
+    def halting(llm, tools, policy=None):
+        llm({"prompt": "hi"})
+        return {"steps": 1, "halted": bool(policy and policy.get("stop"))}
+
+    faithful = Twin.load(path).replay(halting)
+    assert faithful.divergent is True
+    assert faithful.mode == "replay"
+    assert faithful.exit_code == 2
+
+    asked = Twin.load(path).replay(halting, policy={"stop": True})
+    assert asked.divergent is True
+    assert asked.mode == "counterfactual"
+    assert asked.exit_code == 0
+
+
 def test_a_required_third_positional_replays_through_the_public_path(tape_dir):
     """CONTRACTS section 3: the policy is passed whenever the signature accepts it."""
     path = tape_dir / "required-policy.jsonl"

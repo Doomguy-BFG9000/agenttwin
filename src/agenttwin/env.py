@@ -283,6 +283,10 @@ class ReplaySession:
 
     def replay(self, agent: Any, *, policy: Any = None) -> Any:
         """CONTRACTS 9.8 -- run agent(llm, tools) against the tape; return a Report."""
+        # 9.36: a counterfactual is a what-if the caller asked for by hand (a patch,
+        # or an explicit policy).  Its trajectory is meant to leave the recorded one,
+        # so divergence there is the point of the run, not a failure to reproduce.
+        counterfactual = bool(self._patches) or policy is not None
         produced = Trace(header=copy.deepcopy(self.tape.header))
         cursor = Cursor(self.tape, produced=produced)
         llm = ReplayLLM(cursor, patches=self._patches)
@@ -308,7 +312,7 @@ class ReplaySession:
             if terminal is not None:
                 produced.append("terminal", terminal.actor, copy.deepcopy(terminal.payload))
             divergent = True
-        return _build_report(self.tape, produced, self.misses, self.drifts, divergent)
+        return _build_report(self.tape, produced, self.misses, self.drifts, divergent, counterfactual)
 
 
 # --- helpers ---------------------------------------------------------------
@@ -349,7 +353,9 @@ def _invoke_agent(agent: Any, llm: Any, tools: Mapping[str, Callable[..., Any]],
     return invoke(agent, llm, tools, policy)
 
 
-def _build_report(baseline: Trace, trace: Trace, misses: list, drifts: list, divergent: bool) -> Any:
+def _build_report(
+    baseline: Trace, trace: Trace, misses: list, drifts: list, divergent: bool, counterfactual: bool = False
+) -> Any:
     from .report import Report
 
     return Report(
@@ -358,6 +364,6 @@ def _build_report(baseline: Trace, trace: Trace, misses: list, drifts: list, div
         results=[],
         misses=misses,
         drifts=drifts,
-        mode="replay",
+        mode="counterfactual" if counterfactual else "replay",
         divergent=divergent,
     )
