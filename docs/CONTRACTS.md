@@ -164,7 +164,7 @@ TraceDiff(baseline: Trace, current: Trace)
 
 ## 8. 报告与 HTML 回放器契约
 
-- `Report.json()` 顶层键固定：`schema_version, trace_id, mode, exit_code, results, misses, drifts, diff, header`。
+- `Report.json()` 顶层键固定：`schema_version, trace_id, mode, divergent, exit_code, results, misses, drifts, diff, header`。
 - `results` 项：`{"name","status":"PASS"|"FAIL"|"SKIP","detail","first_offense_seq"}`。
 - **HTML 必须是单文件**：`src/agenttwin/html/replayer.html` 内含唯一的占位符 `__AGENTTWIN_PAYLOAD__`（位于 `<script type="application/json" id="agenttwin-payload">` 内）；`report.html(path)` = 用 `json.dumps(payload)` 替换该占位符后写出。
 - payload 形状：`{"trace_id","mode","header","baseline":[event...],"current":[event...],"results":[...],"diff":{"first_divergence_seq","events":[...]},"labels":{"baseline":"recorded","current":"replay"}}`。
@@ -180,3 +180,17 @@ TraceDiff(baseline: Trace, current: Trace)
 5. **未知顶层键拒绝**（而非忽略）。理由：schema 漂移必须响，不能让未来的字段在旧版本里被静默丢弃。
 6. **`TapeMiss` 不中断回放**。理由：§3.4 第 3 条已定；它是策略 diff 成立的前提，中断就退化成崩溃。
 7. **`doctor` 容忍缺 terminal 的 tape**（判定为 `incomplete` 而非 `SchemaError`）。理由：子进程录制崩溃时留下的半截 tape 必须可诊断，而不是不可读。
+8. **R-TERM 的精确边界（收紧 §2 的无条件表述）**：回放产出的 Trace 必须自身合法（save → load 通过），因此
+   - 若控制器消费的事件数**等于** tape 中 terminal 的 `seq`（未分叉）：terminal **原样复制**（`seq` / `t` / `payload` / `patched` 全同），逐位一致成立；
+   - 否则（分叉、提前结束、或出现 TapeMiss）：terminal 用 `Trace.append` 落到新 `seq`，**只复制 `payload`**，`Report.json()['divergent'] = true`。
+   理由：`t = round(seq*0.1, 4)` 与「terminal 的 t 原样复制」只在两者事件数相同时同时成立；无条件复制会写出一条自己都 load 不进去的 tape，把「逐位一致」偷换成「产出一个非法文件」。
+9. **未知 `payload` 键一律接受**，只校验 §1.4 的必需键。理由：`decision` 明确允许任意附加键，且可选键要求向前兼容。
+10. **`patched: false` 读入后归一为空**：写盘只在 true 时出现该键。
+11. **header 必须在第 1 行**；「第一个含 `schema_version` 的行」是识别标志，不是扫描指令。
+12. **`redaction` 与 `env_fingerprint` 的内层结构不由 `trace.py` 校验**（对象性即可），语义归 `redact.py` / `fingerprint.py`。理由：否则给 policy 加一个字段就是 tape 破坏性变更。
+13. **脱敏是整值替换、首个匹配即止**：`'ping bob@x.com now'` → `'<redacted:email>'`；一个字符串最多计 1 次。理由：局部掩码会留下上下文残片，而「绝不泄漏」是硬承诺。
+14. **显式传入 `drop_keys` / `patterns` 是替换默认集**（`None` 才用默认集）。
+15. **只有 `whitelist` 模式才丢非白名单键**；drop-key 命中优先于白名单，未知 kind 在 whitelist 模式下全丢。
+16. **`capture()` 的 `python` 存 major.minor**（`3.12`），`compare` 双侧归一后再比。
+17. **本机测试环境事实**：workspace-write 沙箱下 pytest 的 `tmp_path` 不可用（`PermissionError: [WinError 5]`，路径 `%TEMP%\pytest-of-*`）。测试一律使用 `tests/conftest.py` 提供的 `tape_dir` fixture（根 `build/pytest-tmp`）。**禁止使用 `tmp_path`**。
+18. **`divergent` 字段**（见 §8）：仅 R-TERM 第 2 分支为 true；未分叉的回放必须为 false，否则「逐位一致」无法自证。
