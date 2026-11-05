@@ -9,11 +9,27 @@ description = "Frozen-replay for LLM agents: record one JSONL tape, replay it de
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["llm", "agents", "replay", "record", "determinism", "testing"]
+authors = [{ name = "ravenkernel" }]
+license = { text = "Apache-2.0" }
 classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
 ]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/ravenkernel/agenttwin"
+Source = "https://github.com/ravenkernel/agenttwin"
+Issues = "https://github.com/ravenkernel/agenttwin/issues"
 
 [project.optional-dependencies]
 yaml = ["pyyaml"]
