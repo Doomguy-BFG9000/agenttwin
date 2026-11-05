@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "agenttwin"
 version = "0.1.0"
 description = "Frozen-replay for LLM agents: record one JSONL tape, replay it deterministically, diff what changed."
+readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["llm", "agents", "replay", "record", "determinism", "testing"]
 classifiers = [
