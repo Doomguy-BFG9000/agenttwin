@@ -428,13 +428,31 @@ def test_doctor_flags_a_missing_terminal(tape_dir, capsys):
     assert "terminal: MISSING" in out and "section 9.7" in out
 
 
-def test_doctor_rejects_a_non_tape_as_a_three(tape_dir, capsys):
+def test_doctor_rejects_a_non_tape_as_a_two(tape_dir, capsys):
+    """CONTRACTS section 6: a present but unloadable tape is a 2, not a 3."""
     junk = tape_dir / "doctor-junk.jsonl"
     junk.write_text("nope", encoding="utf-8")
 
-    assert cli.main(["doctor", str(junk)]) == 3
+    assert cli.main(["doctor", str(junk)]) == 2
     err = capsys.readouterr().err
     assert "not a tape" in err and "Traceback" not in err
+
+
+def test_doctor_reports_a_broken_seq_as_a_two(tape_dir, capsys):
+    """The loader is where density is enforced; doctor must report it as a 2."""
+    tape = record_tape(tape_dir / "dense.jsonl")
+    trace = Trace.load(tape)
+    first = trace.events[0]
+    target = tape_dir / "sparse.jsonl"
+    Trace(
+        header=trace.header,
+        events=[Event(3, 0.3, first.kind, first.actor, dict(first.payload))],
+    ).save(target)
+
+    assert cli.main(["doctor", str(target)]) == 2
+    err = capsys.readouterr().err
+    assert "is not a tape" in err
+    assert "expected seq 0 but found 3" in err and "Traceback" not in err
 
 
 def test_doctor_a_missing_file_is_a_three(tape_dir, capsys):
