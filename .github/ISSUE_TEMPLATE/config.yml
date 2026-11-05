@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas that are not a bug or a feature request
+    url: https://github.com/ravenkernel/agenttwin/discussions
+    about: Ask how to record a specific framework, or discuss what a good assertion would be.
+  - name: Security report
+    url: https://github.com/ravenkernel/agenttwin/security/advisories/new
+    about: Please report a leaked secret or a replay that executes code privately.

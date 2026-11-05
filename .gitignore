@@ -33,4 +33,5 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
-docs/
+# Internal design notes stay local; docs/ is the published GitHub Pages demo
+notes/
