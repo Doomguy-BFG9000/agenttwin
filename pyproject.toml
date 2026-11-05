@@ -34,7 +34,7 @@ Changelog = "https://github.com/ravenkernel/agenttwin/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 yaml = ["pyyaml"]
-dev = ["pytest>=7"]
+dev = ["pytest>=7", "coverage>=7"]
 
 [project.scripts]
 agenttwin = "agenttwin.cli:main"
@@ -47,3 +47,13 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 agenttwin = ["html/*.html", "fixtures/*.jsonl"]
+
+# The floor promised by both READMEs and by .github/workflows/ci.yml.  It is a
+# tripwire against a whole module losing its tests, not a target: the suite runs
+# at 94% today, and the CI job prints that real figure next to the gate.
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+fail_under = 82
+show_missing = true
