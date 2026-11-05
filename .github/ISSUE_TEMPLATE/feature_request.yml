@@ -1,0 +1,37 @@
+name: Feature request
+description: Something you cannot express today.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AgentTwin is deliberately narrow: one protocol (`agent(llm, tools)`), one
+        tape format, one adapter. A new assertion or a new gallery fixture is
+        usually a better proposal than a new integration.
+  - type: textarea
+    id: cannot-express
+    attributes:
+      label: Which question can you not answer today?
+      description: |
+        State it as something you would assert about a run. "I want to know that
+        the agent never retried the same tool more than twice" is a good start;
+        "support for LangGraph" is not a question about a run.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What do you do instead right now?
+      description: A workaround, a custom script, or nothing at all.
+  - type: textarea
+    id: shape
+    attributes:
+      label: What would the API look like?
+      description: Optional. A one-line sketch such as `asserts.never_retries("shell", 2)` helps.
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Could this stay inside the frozen-replay contract?
+      description: |
+        The replay path may not call a model, execute a real tool, read the wall
+        clock or do IO. Anything that needs those belongs in record mode.

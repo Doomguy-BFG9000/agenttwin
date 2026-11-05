@@ -1,0 +1,53 @@
+name: Bug report
+description: Something behaves differently from what the docs and the tests promise.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please do not paste real API keys, tokens or prompt
+        text you cannot share publicly - a tape recorded with the default redaction
+        policy is usually shareable, but check it before you attach it.
+  - type: input
+    id: version
+    attributes:
+      label: agenttwin version
+      description: The output of `agenttwin --version`.
+      placeholder: agenttwin 0.1.1
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python and operating system
+      placeholder: 3.12.7 on Windows 11 / 3.11.9 on Ubuntu 24.04
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `agenttwin doctor <tape>`
+      description: Helps rule out a damaged or unreadable tape.
+      render: text
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: |
+        The exact command plus the smallest tape that shows it. A bundled fixture
+        (`agenttwin gallery list`) and the command you ran against it is ideal.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+      description: For an assertion problem, include the assertion name and its detail line.
+    validations:
+      required: true
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback, if there is one
+      render: text

@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If AgentTwin helped your work, cite the repository."
+title: "AgentTwin: frozen-replay testing for LLM agents"
+abstract: >-
+  AgentTwin records one LLM-agent run into a JSONL tape and replays it offline,
+  with no model call and no side effects, so a failing run becomes a regression
+  test that can be committed and asserted on in CI.
+type: software
+authors:
+  - name: "AgentTwin contributors"
+version: 0.1.1
+date-released: 2026-11-05
+license: Apache-2.0
+repository-code: "https://github.com/ravenkernel/agenttwin"
+url: "https://pypi.org/project/agenttwin/"
+keywords:
+  - llm
+  - agents
+  - testing
+  - replay
+  - determinism
+  - ci
