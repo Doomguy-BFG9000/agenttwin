@@ -10,6 +10,7 @@ from agenttwin.adapters.openai_compatible import RECORD_OUT_ENV, RECORD_TRACE_ID
 from agenttwin.drift import FingerprintDrift
 from agenttwin.env import ReplaySession, TapeRecorder, Twin
 from agenttwin.fingerprint import capture
+from agenttwin.redact import Redactor
 from agenttwin.trace import Header, Trace, canonical_json, sha256_hex
 
 
@@ -110,6 +111,28 @@ def test_agent_returned_dict_overrides_the_folded_state(tape_dir):
         recorder.patch_state("/count", 1)
         recorder.returned({"count": 2, "done": True})
     assert Trace.load(path).state() == {"count": 2, "done": True}
+
+
+def test_note_redactions_accumulates_into_the_header(tape_dir):
+    """CONTRACTS 9.28: zero, 0 and several counts are tolerated; they add up on exit."""
+    path = tape_dir / "noted.jsonl"
+    with Twin.record("noted", out=path, llm=fake_llm) as recorder:
+        recorder.note_redactions(0)
+        recorder.note_redactions(2)
+        recorder.note_redactions(1)
+        recorder.llm({"prompt": "hi"})
+    assert Trace.load(path).header.redaction["redacted"] == 3
+
+
+def test_noted_redactions_add_to_the_proxy_counts(tape_dir):
+    """CONTRACTS 9.28: the header is proxy substitutions plus the adapter's own."""
+    path = tape_dir / "noted-plus-proxy.jsonl"
+    with Twin.record(
+        "noted-plus-proxy", out=path, llm=lambda request: {"text": "ok"}, redactor=Redactor()
+    ) as recorder:
+        recorder.note_redactions(2)
+        recorder.llm({"prompt": "ping bob@x.com now"})
+    assert Trace.load(path).header.redaction["redacted"] == 3
 
 
 def test_exception_writes_error_then_terminal_and_reraises(tape_dir):

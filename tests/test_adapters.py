@@ -390,6 +390,34 @@ def test_install_writes_a_tape_that_loads_and_hashes_the_request(tape_dir):
     assert [event.kind for event in tape.events][-1] == "terminal"
 
 
+def test_the_installed_tape_counts_the_previews_the_adapter_redacts(tape_dir):
+    """CONTRACTS 9.28: an adapter-recorded tape reports the substitutions it made."""
+    path = tape_dir / "counted.jsonl"
+    request = {
+        "model": "gpt-4o",
+        "messages": [{"role": "user", "content": "my key is sk-ABCDEFG0123456789"}],
+    }
+    proxy = install(FakeClient(), out=path, trace_id="counted")
+    proxy.chat.completions.create(**request)
+    proxy.flush()
+
+    tape = Trace.load(path)
+    assert tape.header.redaction["redacted"] >= 1
+    payload = [event for event in tape.events if event.kind == "llm_call"][0].payload
+    assert payload["prompt_preview"] == "<redacted:openai_sk>"
+    assert "sk-" not in payload["prompt_preview"]
+    assert payload["prompt_hash"] == sha256_hex(canonical_json(request))
+
+
+def test_a_clean_installed_request_reports_no_redactions(tape_dir):
+    """CONTRACTS 9.28: counting adapter substitutions must not invent any."""
+    path = tape_dir / "clean-count.jsonl"
+    proxy = install(FakeClient(), out=path, trace_id="clean-count")
+    proxy.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": "hi"}])
+    proxy.flush()
+    assert Trace.load(path).header.redaction["redacted"] == 0
+
+
 def test_the_installed_tape_replays_without_prompt_drift(tape_dir):
     path = tape_dir / "replayable.jsonl"
     request = {"model": "gpt-4o", "messages": [{"role": "user", "content": "hi"}]}
