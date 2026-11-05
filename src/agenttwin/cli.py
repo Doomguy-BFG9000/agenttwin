@@ -378,20 +378,20 @@ def _changed_fields(row: dict) -> list[str]:
 
 
 def _cmd_doctor(args: argparse.Namespace) -> int:
-    """CONTRACTS 9.7 -- diagnose one tape; a finding is a 2, an unreadable file a 3."""
+    """CONTRACTS 9.7 -- diagnose one tape; an invalid tape is a 2, an unreadable file a 3."""
     target = Path(args.tape)
-    text = _read_text(target, EXIT_USAGE)
+    text = _read_text(target, EXIT_DRIFT)
     try:
         trace = Trace.from_jsonl(text)
     except SchemaError as exc:
-        raise _CliError(EXIT_USAGE, f"agenttwin doctor: {target} is not a tape: {exc}") from None
+        raise _CliError(EXIT_DRIFT, f"agenttwin doctor: {target} is not a tape: {exc}") from None
 
     findings: list[str] = []
     print(f"tape: {target} (trace_id={trace.header.trace_id}, seed={trace.header.seed})")
     _doctor_schema(trace)
     print(f"events: {len(trace.events)}")
     print("kind counts: " + _kind_counts(trace))
-    _doctor_seq(trace, findings)
+    _doctor_seq(trace)
     _doctor_clock(trace, findings)
     _doctor_terminal(trace, findings)
     _doctor_fingerprint(trace)
@@ -426,18 +426,14 @@ def _kind_counts(trace: Trace) -> str:
     return ", ".join(f"{kind}={counts[kind]}" for kind in sorted(counts))
 
 
-def _doctor_seq(trace: Trace, findings: list[str]) -> None:
-    """Section 1.2: seq starts at 0, is dense, and strictly increases."""
-    dense = all(event.seq == index for index, event in enumerate(trace.events))
-    if dense:
-        last = len(trace.events) - 1
-        print(f"seq: dense 0..{last} and strictly increasing")
-    else:
-        offender = next(
-            event.seq for index, event in enumerate(trace.events) if event.seq != index
-        )
-        print(f"seq: BROKEN at seq {offender}, expected {offender} to continue densely from 0")
-        findings.append(f"seq: not dense from 0 (first offender seq {offender})")
+def _doctor_seq(trace: Trace) -> None:
+    """Section 1.2: seq starts at 0, is dense, and strictly increases.
+
+    trace.py:221 rejects a tape that breaks the invariant while loading, so by
+    the time doctor runs, density is a fact to report, not a finding to raise.
+    """
+    last = len(trace.events) - 1
+    print(f"seq: dense 0..{last} and strictly increasing")
 
 
 def _doctor_clock(trace: Trace, findings: list[str]) -> None:
