@@ -196,6 +196,10 @@ TraceDiff(baseline: Trace, current: Trace)
 18. **`divergent` 字段**（见 §8）：仅 R-TERM 第 2 分支为 true；未分叉的回放必须为 false，否则「逐位一致」无法自证。
 19. **TapeMiss 之后 proxy 返回 `None`**：记 miss、游标**不回退也不跳过**，后续每次调用继续记 miss；不抛异常。理由：§3.4 第 3 条要求它不中断回放，而「跳过去找下一个同类事件」会让 diff 在两个不同时间点上对齐。
 20. **hash 基于脱敏前的请求/参数，preview 存脱敏后的值**（各截断 4096 字符）：`prompt_hash = sha256(canonical_json(request))`、`args_hash = sha256(canonical_json({"args": [...], "kwargs": {...}}))`，二者都在 Redactor 之前算；`prompt_preview` / `args_preview` 存脱敏后的可读副本。理由：脱敏后的值不稳定（策略一改 hash 全变），而 preview 绝不能带 secret。
-21. **`Twin.load` 只在 `model` 与 `agenttwin`(major.minor) 不符时抛 `FingerprintDrift`**；`python` / `platform` / `deps` / `prompt_hash` 的差异只进报告（`fingerprint_diff`），不抛。理由：§13 要求 3.10–3.13 CI 矩阵复用同一批 fixture，python 版本漂移若致命，跨版本回放这一整条承诺就不成立。（`fingerprint.is_fatal` 仍是纯函数，策略过滤在 `env.py`。）
-22. **`patch(args=...)` 会用 `{"args": [], "kwargs": <args>}` 重算 `args_hash`**：patch 改的是「tape 期待什么」，不只是展示层。
-23. **terminal state 规则**：`state` = 折叠后的 state_patch 状态；若 agent 返回 dict，则覆盖合并（返回值优先）。`state_hash = sha256_hex(canonical_json(state))`。录制侧抛异常时，先写 `error` 事件、再写 `outcome="error"` 的 terminal，然后把异常继续抛出。
+21. **`Twin.load` 的 fingerprint 策略**：`agenttwin`(major.minor) 不符一律抛 `FingerprintDrift`；`model` 只有在调用方**显式给出** `Twin.load(path, model=...)` 且与 tape 不符时才抛；`python` / `platform` / `deps` / `prompt_hash`，以及「tape 记了 model 而 load 没给 model」的情况，只记入 `fingerprint_diff`，不抛。
+    - 理由一：§13 要求 3.10–3.13 CI 矩阵复用同一批 fixture，python 版本漂移若致命，跨版本回放这条承诺就不成立。
+
+25. **`warn(...)` 组的软性随 Report 链传递**：`Report._extend` 见到 `AssertionGroup.mode == "warn"` 就把该组的每一行标成 soft，无论它是从 `report.warn(...)` 还是 `report.assert_(asserts.warn(...))` 进来的。理由：§5 写的是「`warn` 软、不进退出码」，而 detail 里带 `[warn]` 的行把退出码顶成 1，等于同一份报告自相矛盾。
+    - 边界：嵌套在 `assert_any` / `assert_all` 里面的 warn 组仍按 hard 处理（宁可误报，也不静默吞掉一个真实失败）；软性只认最外层 spec 的 mode。
+26. **`strict` 属于 Report，不属于 `Twin.load` / `ReplaySession`**：`Twin.load(path, strict=True)` 是 TypeError（frozen surface 无此参数）；开启方式是 `Report(strict=True)` 或 CLI `--strict`。**W3 的 CLI 必须让 `--strict` 真的把 SKIP 顶成退出码 1，并附测试**——目前仓库里没有任何路径会置 `Report.strict=True`，这条是已验证的缺口，不是未知项。
+27. **SKIP 的裁定**：`never_calls(tool)` 在一个从未出现的工具上是 **PASS**（不变式已满足），不是 SKIP；SKIP 只留给「这份 tape 无法求值」的情形——`call_order` 里少于两个名字出现、`budget_within()` 一个上限都没给、`state_invariant` / `output_schema` 遇到既无 terminal 也无 state_patch 的 tape。理由：把「没违规」报成 SKIP 会让 `--strict` 把安全的 tape 判红。
