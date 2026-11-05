@@ -6,13 +6,17 @@
 
 Not a trace dashboard, not a monitoring platform: no service, no database, no dashboard, just one JSONL file and one ordinary assertion.
 
+![One failing tape, one policy change: the offline viewer, before and after](https://raw.githubusercontent.com/ravenkernel/agenttwin/main/assets/hero.gif)
+
+*One committed tape, replayed twice with no model call: two assertions fail, one policy key changes, all three pass. What you are looking at is a single HTML file, opened from `file://`.*
+
 The 30-second version:
 
 1. Recording calls the model and writes the request hash and the response into the tape;
 2. Replay calls no model and executes no real tool; it walks the tape event by event;
 3. A mismatch is a failure (not "run it again and see"); the assertion result ends up as a process exit code.
 
-Every code block below was actually run against this repository: blocks 1 to 4 in order, block 5 only against the fixtures shipped with the repo. The output under a block is the output of that run.
+Every code block below was actually run against this repository. The Python and YAML blocks run in order on the tape recorded by the first one; the shell blocks only need the fixtures that ship inside the package. The output under a block is the output of that run.
 
 ## 1. Record one run
 
@@ -115,6 +119,38 @@ Two things that are easy to miss:
 - `sys.exit(report.exit_code)` turns the assertion result into an ordinary exit code that `pytest` or any CI consumes directly.
 
 The same result in three shapes: `report.markdown()` (a table for humans), `report.json()` (for machines, with fixed top-level keys `schema_version` / `trace_id` / `mode` / `divergent` / `exit_code` / `results` / `misses` / `drifts` / `diff` / `header`), and `report.html("report.html")` (a single-file report, no external references, opens straight from `file://`; the byte count above varies a little with the tape and the environment). The viewer carries an English/Chinese switch in its header (the choice is remembered in `localStorage`); the recorded tape text itself is never translated.
+
+### The whole loop in one command
+
+`examples/hero.py` is the animation at the top of this page: one tape from the fixtures that ship with the package, replayed twice, with one policy key changed between the two runs.
+
+```bash
+PYTHONPATH=src python examples/hero.py
+```
+
+Output:
+
+```text
+tape: deathloop.jsonl  (21 events)
+no model call, no network, no API key: the tape is the whole environment
+
+before  mode=replay  recorded (no policy passed)
+  exit code 1
+  FAIL  max_repeats(shell, n=3)  -- 6 calls of shell exceeds the limit of 3; first excess at seq 12  (seq 12)
+  FAIL  budget_within(calls<=8)  -- calls 13 > 8 (first excess at seq 12)  (seq 12)
+  PASS  never_calls(shell, args_contains='rm -rf')  -- no call of shell matches
+
+after   mode=counterfactual  policy={'max_attempts': 6, 'stop_on_failure': True}
+  exit code 0
+  PASS  max_repeats(shell, n=3)  -- 0 call(s) of shell (limit 3)
+  PASS  budget_within(calls<=8)  -- calls 2/8
+  PASS  never_calls(shell, args_contains='rm -rf')  -- no call of shell matches
+
+first divergence: seq 3  (same tape, different trajectory)
+reports: build/hero/before.html  build/hero/after.html
+```
+
+The word `counterfactual` in that banner is the point. A replay that carries a patch or its own policy is asking "what if", so the viewer labels it as one and its divergence is not a failure. A replay that carries neither has to reproduce the tape event for event, and divergence there is still exit code 2.
 
 ## 3. A changed request is a hard failure
 

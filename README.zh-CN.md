@@ -6,13 +6,17 @@
 
 不是 trace 仪表盘，不是监控平台：没有服务、没有数据库、没有 dashboard，只有一条 JSONL 文件和一次普通的断言。
 
+![同一条失败 tape，改一个策略后全绿：离线回放器的前后对比](https://raw.githubusercontent.com/ravenkernel/agenttwin/main/assets/hero.gif)
+
+*同一条已提交的 tape 回放两次，全程不调模型：两条断言先红，改一个策略键后三条全绿。画面里看到的就是一个单文件 HTML，`file://` 直接打开。*
+
 30 秒版本：
 
 1. 录制时调用模型，把请求哈希和响应写进 tape；
 2. 回放时不调用模型、不执行真实工具，逐条比对 tape；
 3. 比对不上就是失败（不是"重跑一次看看"）；断言结果最终就是一个进程退出码。
 
-下面每个代码块都在本仓库上实际跑过：1 到 4 按顺序跑，5 只用仓库自带的 fixture。块下面的输出就是那次运行的输出。
+下面每个代码块都在本仓库上实际跑过。Python 与 YAML 块按顺序使用第 1 块录出的那条 tape；shell 块只用到包内自带的 fixture。块下面的输出就是那次运行的输出。
 
 ## 1. 录一次
 
@@ -115,6 +119,38 @@ exit code: 0
 - `sys.exit(report.exit_code)` 把断言结果变成普通退出码，`pytest` 或任意 CI 直接消费。
 
 同一份结果的三种形态：`report.markdown()`（人读的表格）、`report.json()`（机器读，顶层 key 固定为 `schema_version` / `trace_id` / `mode` / `divergent` / `exit_code` / `results` / `misses` / `drifts` / `diff` / `header`）、`report.html("report.html")`（单文件报告，无外链，`file://` 直接打开；上面的字节数会随 tape 和运行环境略有不同）。 回放器顶部还带中英文切换（选择记在 `localStorage` 里），tape 内容本身不做翻译。
+
+### 整条闭环，一条命令
+
+`examples/hero.py` 就是本页开头那段动画：用包内自带的一条 tape 回放两次，两次之间只改一个策略键。
+
+```bash
+PYTHONPATH=src python examples/hero.py
+```
+
+输出：
+
+```text
+tape: deathloop.jsonl  (21 events)
+no model call, no network, no API key: the tape is the whole environment
+
+before  mode=replay  recorded (no policy passed)
+  exit code 1
+  FAIL  max_repeats(shell, n=3)  -- 6 calls of shell exceeds the limit of 3; first excess at seq 12  (seq 12)
+  FAIL  budget_within(calls<=8)  -- calls 13 > 8 (first excess at seq 12)  (seq 12)
+  PASS  never_calls(shell, args_contains='rm -rf')  -- no call of shell matches
+
+after   mode=counterfactual  policy={'max_attempts': 6, 'stop_on_failure': True}
+  exit code 0
+  PASS  max_repeats(shell, n=3)  -- 0 call(s) of shell (limit 3)
+  PASS  budget_within(calls<=8)  -- calls 2/8
+  PASS  never_calls(shell, args_contains='rm -rf')  -- no call of shell matches
+
+first divergence: seq 3  (same tape, different trajectory)
+reports: build/hero/before.html  build/hero/after.html
+```
+
+横幅里的 `counterfactual` 是重点：带 patch 或自带 policy 的回放是在问「如果这样会怎样」，所以回放器把它标成这一类，它的分歧不算失败；两者都不带的忠实回放必须逐事件复现 tape，那里出现分歧仍然是退出码 2。
 
 ## 3. 请求变了就是硬失败
 
