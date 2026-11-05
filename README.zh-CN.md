@@ -274,6 +274,7 @@ strict: no
 0.1.0 是仓库里的版本号，不是发布号：还没有对外发布。
 
 - 已完成并有测试：录制/回放核心（`Twin.record` / `Twin.load`）、drift 检测、9 个断言工厂 + 组合子 + YAML 加载、`TraceDiff`、`Report`（JSON / Markdown / 单文件 HTML）、`agenttwin` 的五个子命令、openai-compatible adapter（鸭子类型，不 import SDK）、十个内置 fixture（五组 before / after）。
-- 未验证：`.github/workflows/ci.yml` 只在本地解析过 YAML，没有在 GitHub 上真正跑过；本机沙箱装不了包，所以示例都用 `PYTHONPATH=src` 跑，`agenttwin` 控制台脚本由 `pyproject.toml` 声明但没真正执行过（`python -m agenttwin` 跑过）。
-- 还没做：PyPI 发布、覆盖率门槛、任何托管服务或 dashboard。
+- 已在 GitHub 上验证：[CI](https://github.com/ravenkernel/agenttwin/actions) 在每次 push 到 `main` 时运行，共八个 job：Ubuntu 上的 Python 3.10–3.13、macOS 与 Windows 上的 3.12，加两个先卸载 PyYAML 的 stdlib-only import 检查，每个 job 还都跑一次控制台脚本。首次运行失败在一条用了 `platform: linux` 的 fixture 上——它恰好与 Ubuntu runner 上真实的 `sys.platform` 相同；那是测试的 bug，已在 `6c5dae7` 修掉，之后全绿。
+- 本地验证过、但还没经过一次发布：`python -m pip wheel .` 产出 `agenttwin-0.1.0-py3-none-any.whl`，里面含十个 fixture 与 `html/replayer.html`；把它装进干净的 venv 后 `agenttwin` 控制台脚本可用（`agenttwin --version`、`agenttwin gallery list`，以及 `gallery run` 对坏 fixture 返回 1、对其修复版返回 0）。
+- 还没做：PyPI 发布、覆盖率门槛、任何托管服务或 dashboard。上面所有示例都用 `PYTHONPATH=src` 运行，不装任何东西也能跑。
 
