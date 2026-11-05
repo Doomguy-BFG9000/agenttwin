@@ -191,6 +191,15 @@ def test_required_hooks_and_markers_are_present(template_text: str) -> None:
     assert not missing, "missing from replayer.html: " + repr(missing)
 
 
+def test_state_diff_rows_do_not_shrink_inside_the_scroll_list(template_text: str) -> None:
+    rule = re.search(r"\.diff-row\s*\{[^}]*\}", template_text)
+    assert rule is not None, ".diff-row is missing from the template stylesheet"
+    assert "flex: 0 0 auto" in rule.group(0), (
+        ".diff-row is a flex child of a scrollable column; without flex: 0 0 auto "
+        "the browser squeezes every diff row down to a few pixels instead of scrolling"
+    )
+
+
 def test_template_stays_small(template_text: str) -> None:
     assert TEMPLATE_PATH.stat().st_size < 200 * 1024
     assert len(template_text.splitlines()) < 1600

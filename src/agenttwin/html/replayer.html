@@ -290,7 +290,8 @@
   .badge-skip { color: var(--skip); background: var(--skip-bg); border-color: var(--skip-line); }
   /* ---------- state diff ---------- */
   .diff-list { display: flex; flex-direction: column; gap: 7px; padding: 6px 8px 10px; max-height: 42vh; overflow: auto; }
-  .diff-row { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; background: var(--row); }
+  /* flex: a scrollable column would otherwise squeeze every row to a few pixels */
+  .diff-row { flex: 0 0 auto; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; background: var(--row); }
   .diff-head {
     display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
     padding: 6px 9px; background: var(--panel-2); border-bottom: 1px solid var(--line);
