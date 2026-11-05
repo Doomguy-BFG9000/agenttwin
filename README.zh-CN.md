@@ -114,7 +114,7 @@ exit code: 0
 - `Twin.load("checkout.jsonl").replay(agent)` 没有 `llm=`，也没有 `tools=`：回放用的模型和工具都来自 tape。`llm(...)` 返回记录时的响应，`tools["lookup_order"](...)` 返回记录时的结果，真实函数一次都不会被调用。
 - `sys.exit(report.exit_code)` 把断言结果变成普通退出码，`pytest` 或任意 CI 直接消费。
 
-同一份结果的三种形态：`report.markdown()`（人读的表格）、`report.json()`（机器读，顶层 key 固定为 `schema_version` / `trace_id` / `mode` / `divergent` / `exit_code` / `results` / `misses` / `drifts` / `diff` / `header`）、`report.html("report.html")`（单文件报告，无外链，`file://` 直接打开；上面的字节数会随 tape 和运行环境略有不同）。
+同一份结果的三种形态：`report.markdown()`（人读的表格）、`report.json()`（机器读，顶层 key 固定为 `schema_version` / `trace_id` / `mode` / `divergent` / `exit_code` / `results` / `misses` / `drifts` / `diff` / `header`）、`report.html("report.html")`（单文件报告，无外链，`file://` 直接打开；上面的字节数会随 tape 和运行环境略有不同）。 回放器顶部还带中英文切换（选择记在 `localStorage` 里），tape 内容本身不做翻译。
 
 ## 3. 请求变了就是硬失败
 

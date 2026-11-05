@@ -371,7 +371,7 @@
       <span class="mark" aria-hidden="true"></span>
       <div>
         <div class="wordmark">AgentTwin</div>
-        <div class="brand-sub">replay viewer</div>
+        <div class="brand-sub" data-i18n="brand.sub">replay viewer</div>
       </div>
     </div>
     <div class="topbar-mid">
@@ -379,59 +379,58 @@
       <span class="chip chip-mode" id="mode-chip">&mdash;</span>
     </div>
     <div class="topbar-right">
-      <span class="kbd-hint"><kbd>space</kbd> play/pause &middot; <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step</span>
+      <span class="kbd-hint"><kbd>space</kbd> <span data-i18n="hint.playpause">play/pause</span> &middot; <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <span data-i18n="hint.step">step</span></span>
+      <button class="ghost-btn" type="button" id="lang-toggle">中文</button>
       <button class="ghost-btn" type="button" id="theme-toggle" aria-pressed="false">Light theme</button>
     </div>
   </header>
 
   <div class="workspace">
     <div class="stack-left">
-      <section class="panel transport" aria-label="Timeline">
+      <section class="panel transport" aria-label="Timeline" data-i18n-aria-label="panel.timeline">
         <div class="transport-row">
-          <div class="btn-group" role="group" aria-label="Playback controls">
-            <button type="button" class="tbtn" id="btn-prev" title="Step back (Left arrow)">
-              <span class="glyph g-tri left" aria-hidden="true"></span>Back
+          <div class="btn-group" role="group" aria-label="Playback controls" data-i18n-aria-label="panel.controls">
+            <button type="button" class="tbtn" id="btn-prev" title="Step back (Left arrow)" data-i18n-title="btn.backTitle">
+              <span class="glyph g-tri left" aria-hidden="true"></span><span data-i18n="btn.back">Back</span>
             </button>
-            <button type="button" class="tbtn" id="btn-play" title="Play (Space)" aria-pressed="false">
-              <span class="glyph g-tri" aria-hidden="true"></span>Play
+            <button type="button" class="tbtn" id="btn-play" title="Play (Space)" aria-pressed="false" data-i18n-title="btn.playTitle">
+              <span class="glyph g-tri" aria-hidden="true"></span><span data-i18n="btn.play">Play</span>
             </button>
-            <button type="button" class="tbtn" id="btn-pause" title="Pause (Space)" aria-pressed="true">
-              <span class="glyph g-pause" aria-hidden="true"></span>Pause
+            <button type="button" class="tbtn" id="btn-pause" title="Pause (Space)" aria-pressed="true" data-i18n-title="btn.pauseTitle">
+              <span class="glyph g-pause" aria-hidden="true"></span><span data-i18n="btn.pause">Pause</span>
             </button>
-            <button type="button" class="tbtn" id="btn-next" title="Step forward (Right arrow)">
-              Step<span class="glyph g-tri" aria-hidden="true"></span>
+            <button type="button" class="tbtn" id="btn-next" title="Step forward (Right arrow)" data-i18n-title="btn.nextTitle">
+              <span data-i18n="btn.next">Step</span><span class="glyph g-tri" aria-hidden="true"></span>
             </button>
           </div>
           <div class="speed">
-            <label for="speed">speed</label>
-            <select id="speed" aria-label="Playback speed">
+            <label for="speed" data-i18n="speed.label">speed</label>
+            <select id="speed" aria-label="Playback speed" data-i18n-aria-label="speed.aria">
               <option value="0.5">0.5&times;</option>
               <option value="1" selected>1&times;</option>
               <option value="2">2&times;</option>
               <option value="4">4&times;</option>
             </select>
           </div>
-          <div class="status" id="status" aria-live="polite">
-            frame <b id="frame-pos">0</b><span class="sep">/</span><span id="frame-total">0</span>
-            <span class="sep">&middot;</span>seq <span id="frame-seq">&mdash;</span>
-          </div>
+          <div class="status" id="status" aria-live="polite">frame <b>0</b><span class="sep">/</span><span>0</span><span class="sep">&middot;</span>seq <b>&mdash;</b></div>
         </div>
         <div class="scrub-row">
           <input type="range" id="scrubber" min="0" max="0" step="1" value="0"
-                 aria-label="Event index" aria-valuetext="frame 0 of 0">
+                 aria-label="Event index" aria-valuetext="frame 0 of 0" data-i18n-aria-label="scrub.aria">
         </div>
         <div class="filter-row">
-          <span class="filter-label">kinds</span>
+          <span class="filter-label" data-i18n="filter.kinds">kinds</span>
           <div class="kind-filters" id="filter-kinds"></div>
-          <span class="filter-label">actor</span>
+          <span class="filter-label" data-i18n="filter.actor">actor</span>
           <input id="actor-filter" type="text" list="actor-list" placeholder="any actor"
-                 autocomplete="off" spellcheck="false" aria-label="Filter by actor">
+                 autocomplete="off" spellcheck="false" aria-label="Filter by actor"
+                 data-i18n-placeholder="filter.any" data-i18n-aria-label="filter.actorAria">
           <datalist id="actor-list"></datalist>
-          <button class="ghost-btn small" type="button" id="filter-reset">Reset filters</button>
+          <button class="ghost-btn small" type="button" id="filter-reset" data-i18n="filter.reset">Reset filters</button>
         </div>
       </section>
 
-      <section class="panel columns-panel" aria-label="Baseline and current events">
+      <section class="panel columns-panel" aria-label="Baseline and current events" data-i18n-aria-label="panel.events">
         <div class="col-head">
           <div class="col-title">
             <span class="dot dot-base" aria-hidden="true"></span>
@@ -439,10 +438,10 @@
             <span class="col-count" id="count-baseline">0</span>
           </div>
           <div class="legend" aria-hidden="true">
-            <span class="chip chip-patched">patched</span>
-            <span class="chip chip-added">added</span>
-            <span class="chip chip-removed">removed</span>
-            <span class="chip chip-changed">changed</span>
+            <span class="chip chip-patched" data-i18n="change.patched">patched</span>
+            <span class="chip chip-added" data-i18n="change.added">added</span>
+            <span class="chip chip-removed" data-i18n="change.removed">removed</span>
+            <span class="chip chip-changed" data-i18n="change.changed">changed</span>
           </div>
           <div class="col-title right">
             <span class="col-count" id="count-current">0</span>
@@ -458,22 +457,22 @@
             <div class="col-body" id="col-current"></div>
           </div>
         </div>
-        <div class="col-foot" id="filter-note">no events loaded</div>
+        <div class="col-foot" id="filter-note" data-i18n="filter.loading">no events loaded</div>
       </section>
     </div>
 
     <div class="stack-right">
-      <section class="panel" aria-label="Assertion results">
+      <section class="panel" aria-label="Assertion results" data-i18n-aria-label="panel.assertions">
         <div class="panel-head">
-          <h2>Assertions</h2>
+          <h2 data-i18n="panel.assertions">Assertions</h2>
           <div class="panel-meta" id="assertion-summary">&mdash;</div>
         </div>
         <div class="assert-list" id="assertions"></div>
       </section>
 
-      <section class="panel" aria-label="State diff">
+      <section class="panel" aria-label="State diff" data-i18n-aria-label="panel.diff">
         <div class="panel-head">
-          <h2>State diff</h2>
+          <h2 data-i18n="panel.diff">State diff</h2>
           <div class="panel-meta" id="diff-summary">&mdash;</div>
         </div>
         <div class="diff-list" id="state-diff"></div>
@@ -482,10 +481,10 @@
   </div>
 
   <footer class="fingerprint">
-    <span class="filter-label">header</span>
+    <span class="filter-label" data-i18n="header.label">header</span>
     <span class="fp-line" id="fp-line">&mdash;</span>
     <details class="fp-details" id="header-fingerprint">
-      <summary>full header</summary>
+      <summary data-i18n="header.full">full header</summary>
       <pre id="fp-json"></pre>
     </details>
   </footer>
@@ -494,18 +493,196 @@
 <div class="fatal" id="error-panel" hidden role="alertdialog" aria-labelledby="error-title">
   <div class="fatal-card">
     <div class="fatal-badge" aria-hidden="true">!</div>
-    <h1 id="error-title">This trace could not be loaded</h1>
-    <p id="error-message">No payload was found.</p>
+    <h1 id="error-title" data-i18n="error.title">This trace could not be loaded</h1>
+    <p id="error-message" data-i18n="error.empty">No payload was found.</p>
     <p class="fatal-hint">
-      The viewer reads a single JSON blob from
-      <code>&lt;script type="application/json" id="agenttwin-payload"&gt;</code>.
-      Re-export the trace and open the generated file again.
+      <span data-i18n="error.hintA">The viewer reads a single JSON blob from</span>
+      <code>&lt;script type="application/json" id="agenttwin-payload"&gt;</code>
+      <span data-i18n="error.hintB">Re-export the trace and open the generated file again.</span>
     </p>
   </div>
 </div>
 
 <div class="notice" id="notice" hidden role="status"></div>
 
+<script type="application/json" id="agenttwin-i18n-en">{
+  "brand.sub": "replay viewer",
+  "hint.playpause": "play/pause",
+  "hint.step": "step",
+  "lang.other": "中文",
+  "lang.otherTitle": "Switch to Chinese",
+  "theme.toLight": "Light theme",
+  "theme.toDark": "Dark theme",
+  "btn.back": "Back",
+  "btn.play": "Play",
+  "btn.pause": "Pause",
+  "btn.next": "Step",
+  "btn.backTitle": "Step back (Left arrow)",
+  "btn.playTitle": "Play (Space)",
+  "btn.pauseTitle": "Pause (Space)",
+  "btn.nextTitle": "Step forward (Right arrow)",
+  "speed.label": "speed",
+  "speed.aria": "Playback speed",
+  "status.line": "frame <b>{frame}</b><span class='sep'>/</span><span>{total}</span><span class='sep'>·</span>seq <b>{seq}</b>",
+  "scrub.aria": "Event index",
+  "scrub.value": "frame {frame} of {total}, seq {seq}",
+  "panel.timeline": "Timeline",
+  "panel.controls": "Playback controls",
+  "panel.events": "Baseline and current events",
+  "panel.assertions": "Assertions",
+  "panel.diff": "State diff",
+  "filter.kinds": "kinds",
+  "filter.actor": "actor",
+  "filter.any": "any actor",
+  "filter.actorAria": "Filter by actor",
+  "filter.kindAria": "show {kind} events",
+  "filter.reset": "Reset filters",
+  "filter.resetNotice": "Filters reset.",
+  "filter.loading": "no events loaded",
+  "filter.note": "showing {shown} of {total} frames · playback and stepping follow the filter",
+  "filter.noteDivergence": " · first divergence at seq {seq}",
+  "filter.empty": "this trace contains no events",
+  "change.patched": "patched",
+  "change.added": "added",
+  "change.removed": "removed",
+  "change.changed": "changed",
+  "change.same": "same",
+  "col.baseline": "baseline",
+  "col.current": "current",
+  "col.recorded": "recorded",
+  "col.replay": "replay",
+  "seq.tag": "seq {seq}",
+  "assert.summary": "{pass} pass · {fail} fail · {skip} skip",
+  "assert.none": "none",
+  "assert.empty": "no assertions recorded for this trace",
+  "assert.unnamed": "(unnamed assertion)",
+  "assert.jumpTitle": "Jump to the first offending frame",
+  "diff.changes": "{count} change",
+  "diff.changesPlural": "{count} changes",
+  "diff.none": "no divergence",
+  "diff.firstAt": " · first at seq {seq}",
+  "diff.empty": "recorded and replayed events agree at payload level",
+  "diff.jumpTitle": "Jump the timeline to this frame",
+  "empty.addedRecorded": "not in recorded run",
+  "empty.removedReplay": "not in replay",
+  "empty.noRecorded": "no recorded event",
+  "empty.noReplay": "no replay event",
+  "empty.notRecorded": "not recorded",
+  "empty.notReplayed": "not replayed",
+  "header.label": "header",
+  "header.full": "full header",
+  "header.empty": "no header recorded",
+  "trace.none": "(no trace id)",
+  "trace.title": "trace id",
+  "mode.unknown": "unknown mode",
+  "doc.title": "AgentTwin — replay",
+  "error.title": "This trace could not be loaded",
+  "error.empty": "No payload was found.",
+  "error.hintA": "The viewer reads a single JSON blob from",
+  "error.hintB": "Re-export the trace and open the generated file again.",
+  "err.missingElement": "The agenttwin-payload element is missing from this file.",
+  "err.emptyPayload": "The embedded payload is empty.",
+  "err.unfilledTemplate": "This file is the unfilled template: the payload placeholder was never replaced.",
+  "err.badJson": "The embedded payload is not valid JSON: {detail}",
+  "err.notObject": "The embedded payload is not a JSON object.",
+  "err.noEventLists": "The payload carries neither a baseline nor a current event list.",
+  "err.unexpected": "Unexpected error while rendering this trace: ",
+  "notice.noFrames": "No frames match the current filter.",
+  "notice.noOffenseSeq": "This failure records no offense sequence.",
+  "notice.seqNotInReplay": "Seq {seq} is not part of this replay.",
+  "notice.noReplaySide": "Seq {seq} has no event on the replay side.",
+  "notice.jumped": "Jumped to seq {seq}{note}",
+  "notice.jumpedNote": " — seq {seq} has no replay event, jumped to the nearest one"
+}</script>
+<script type="application/json" id="agenttwin-i18n-zh">{
+  "brand.sub": "回放查看器",
+  "hint.playpause": "播放/暂停",
+  "hint.step": "步进",
+  "lang.other": "English",
+  "lang.otherTitle": "切换到英文",
+  "theme.toLight": "浅色主题",
+  "theme.toDark": "深色主题",
+  "btn.back": "上一步",
+  "btn.play": "播放",
+  "btn.pause": "暂停",
+  "btn.next": "下一步",
+  "btn.backTitle": "后退一帧（← 键）",
+  "btn.playTitle": "播放（空格键）",
+  "btn.pauseTitle": "暂停（空格键）",
+  "btn.nextTitle": "前进一帧（→ 键）",
+  "speed.label": "速度",
+  "speed.aria": "播放速度",
+  "status.line": "第 <b>{frame}</b><span class='sep'>/</span><span>{total}</span> 帧<span class='sep'>·</span>seq <b>{seq}</b>",
+  "scrub.aria": "事件序号",
+  "scrub.value": "第 {frame} / {total} 帧，seq {seq}",
+  "panel.timeline": "时间轴",
+  "panel.controls": "播放控制",
+  "panel.events": "基线与当前事件",
+  "panel.assertions": "断言",
+  "panel.diff": "状态差异",
+  "filter.kinds": "事件类型",
+  "filter.actor": "执行者",
+  "filter.any": "任意执行者",
+  "filter.actorAria": "按执行者过滤",
+  "filter.kindAria": "显示 {kind} 事件",
+  "filter.reset": "重置过滤",
+  "filter.resetNotice": "已重置过滤。",
+  "filter.loading": "尚未载入事件",
+  "filter.note": "显示 {shown} / {total} 帧 · 播放与步进按过滤结果进行",
+  "filter.noteDivergence": " · 首次分歧在 seq {seq}",
+  "filter.empty": "这条 trace 没有任何事件",
+  "change.patched": "补丁",
+  "change.added": "新增",
+  "change.removed": "删除",
+  "change.changed": "变更",
+  "change.same": "相同",
+  "col.baseline": "基线",
+  "col.current": "当前",
+  "col.recorded": "录制",
+  "col.replay": "回放",
+  "seq.tag": "seq {seq}",
+  "assert.summary": "通过 {pass} · 失败 {fail} · 跳过 {skip}",
+  "assert.none": "无",
+  "assert.empty": "这条 trace 没有记录断言",
+  "assert.unnamed": "（未命名断言）",
+  "assert.jumpTitle": "跳到第一个出错的帧",
+  "diff.changes": "{count} 处变更",
+  "diff.changesPlural": "{count} 处变更",
+  "diff.none": "无分歧",
+  "diff.firstAt": " · 首次在 seq {seq}",
+  "diff.empty": "录制与回放的事件在 payload 层一致",
+  "diff.jumpTitle": "把时间轴跳到这一帧",
+  "empty.addedRecorded": "录制侧没有此事件",
+  "empty.removedReplay": "回放侧没有此事件",
+  "empty.noRecorded": "没有录制事件",
+  "empty.noReplay": "没有回放事件",
+  "empty.notRecorded": "未记录",
+  "empty.notReplayed": "未回放",
+  "header.label": "头部",
+  "header.full": "完整头部",
+  "header.empty": "没有记录头部",
+  "trace.none": "（无 trace id）",
+  "trace.title": "trace id",
+  "mode.unknown": "未知模式",
+  "doc.title": "AgentTwin — 回放",
+  "error.title": "无法加载这条 trace",
+  "error.empty": "没有找到 payload。",
+  "error.hintA": "查看器从这个标签读取一段 JSON：",
+  "error.hintB": "重新导出这条 trace，再打开生成的文件。",
+  "err.missingElement": "这个文件里缺少 agenttwin-payload 元素。",
+  "err.emptyPayload": "内嵌的 payload 是空的。",
+  "err.unfilledTemplate": "这是未填充的模板：payload 占位符从未被替换。",
+  "err.badJson": "内嵌的 payload 不是合法 JSON：{detail}",
+  "err.notObject": "内嵌的 payload 不是 JSON 对象。",
+  "err.noEventLists": "payload 既没有 baseline 也没有 current 事件列表。",
+  "err.unexpected": "渲染这条 trace 时出现意外错误：",
+  "notice.noFrames": "没有帧匹配当前过滤条件。",
+  "notice.noOffenseSeq": "这条失败没有记录出错的 seq。",
+  "notice.seqNotInReplay": "seq {seq} 不在这条回放里。",
+  "notice.noReplaySide": "seq {seq} 在回放侧没有事件。",
+  "notice.jumped": "已跳到 seq {seq}{note}",
+  "notice.jumpedNote": " — seq {seq} 在回放侧没有事件，已跳到最近的一帧"
+}</script>
 <script type="application/json" id="agenttwin-payload">__AGENTTWIN_PAYLOAD__</script>
 <script>
 (function () {
@@ -528,6 +705,95 @@
     kinds: {},
     actorQuery: ""
   };
+  /* ---------- i18n ---------- */
+  var DICT_IDS = { en: "agenttwin-i18n-en", zh: "agenttwin-i18n-zh" };
+  var LANGS = ["en", "zh"];
+  var LANG_KEY = "agenttwin.lang";
+  var I18N = {};
+  var LANG = "en";
+
+  function readDict(id) {
+    var node = $(id);
+    if (!node) { return {}; }
+    try { return JSON.parse(node.textContent || "{}"); } catch (e) { return {}; }
+  }
+  function fill(text, vars) {
+    var out = String(text);
+    var keys = Object.keys(vars || {});
+    for (var i = 0; i < keys.length; i++) {
+      var token = "{" + keys[i] + "}";
+      while (out.indexOf(token) >= 0) { out = out.split(token).join(String(vars[keys[i]])); }
+    }
+    return out;
+  }
+  function t(key, vars) {
+    var table = I18N[LANG] || {};
+    var fallback = I18N.en || {};
+    var text = table[key];
+    if (text === undefined || text === null) {
+      text = fallback[key] === undefined ? key : fallback[key];
+    }
+    return vars ? fill(text, vars) : String(text);
+  }
+  function hasKey(key) {
+    var table = I18N[LANG] || {};
+    var fallback = I18N.en || {};
+    return table[key] !== undefined || fallback[key] !== undefined;
+  }
+  function readStoredLang() {
+    try {
+      var value = window.localStorage.getItem(LANG_KEY);
+      return LANGS.indexOf(value) >= 0 ? value : null;
+    } catch (e) { return null; }
+  }
+  function storeLang(lang) {
+    try { window.localStorage.setItem(LANG_KEY, lang); } catch (e) { return; }
+  }
+  function preferredLang() {
+    var stored = readStoredLang();
+    if (stored) { return stored; }
+    var nav = String((window.navigator && window.navigator.language) || "").toLowerCase();
+    return nav.indexOf("zh") === 0 ? "zh" : "en";
+  }
+  function translateTree() {
+    var nodes = document.querySelectorAll("[data-i18n]");
+    for (var i = 0; i < nodes.length; i++) { nodes[i].textContent = t(nodes[i].getAttribute("data-i18n")); }
+    var titles = document.querySelectorAll("[data-i18n-title]");
+    for (var j = 0; j < titles.length; j++) { titles[j].setAttribute("title", t(titles[j].getAttribute("data-i18n-title"))); }
+    var aria = document.querySelectorAll("[data-i18n-aria-label]");
+    for (var k = 0; k < aria.length; k++) { aria[k].setAttribute("aria-label", t(aria[k].getAttribute("data-i18n-aria-label"))); }
+    var hints = document.querySelectorAll("[data-i18n-placeholder]");
+    for (var m = 0; m < hints.length; m++) { hints[m].setAttribute("placeholder", t(hints[m].getAttribute("data-i18n-placeholder"))); }
+    var toggle = $("lang-toggle");
+    if (toggle) {
+      toggle.textContent = t("lang.other");
+      toggle.setAttribute("aria-label", t("lang.otherTitle"));
+    }
+  }
+  function applyLang(lang) {
+    LANG = LANGS.indexOf(lang) >= 0 ? lang : "en";
+    document.documentElement.setAttribute("lang", LANG);
+    translateTree();
+    applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
+    refreshDynamic();
+  }
+  function setLang(lang) { storeLang(lang); applyLang(lang); }
+  function refreshDynamic() {
+    if (!state.data) { return; }
+    document.title = t("doc.title") + (state.data.trace_id ? " " + state.data.trace_id : "");
+    renderLabels();
+    renderHeader();
+    var inputs = $("filter-kinds").getElementsByTagName("input");
+    for (var i = 0; i < inputs.length; i++) { inputs[i].setAttribute("aria-label", t("filter.kindAria", { kind: inputs[i].value })); }
+    syncTransport();
+    updateFilterNote();
+    renderAssertions();
+    renderStateDiff();
+  }
+  for (var langIndex = 0; langIndex < LANGS.length; langIndex++) {
+    I18N[LANGS[langIndex]] = readDict(DICT_IDS[LANGS[langIndex]]);
+  }
+  LANG = preferredLang();
   /* ---------- helpers ---------- */
   function $(id) { return document.getElementById(id); }
   function el(tag, cls, text) {
@@ -563,22 +829,22 @@
   /* ---------- payload ---------- */
   function readPayload() {
     var node = $(PAYLOAD_ID);
-    if (!node) { throw new Error("The agenttwin-payload element is missing from this file."); }
+    if (!node) { throw new Error(t("err.missingElement")); }
     var raw = node.textContent || "";
     var trimmed = raw.replace(/^\s+|\s+$/g, "");
-    if (!trimmed) { throw new Error("The embedded payload is empty."); }
+    if (!trimmed) { throw new Error(t("err.emptyPayload")); }
     if (trimmed === PLACEHOLDER) {
-      throw new Error("This file is the unfilled template: the payload placeholder was never replaced.");
+      throw new Error(t("err.unfilledTemplate"));
     }
     var parsed;
     try {
       parsed = JSON.parse(trimmed);
     } catch (e) {
-      throw new Error("The embedded payload is not valid JSON: " + (e && e.message ? e.message : e));
+      throw new Error(t("err.badJson", { detail: e && e.message ? e.message : e }));
     }
-    if (!isObj(parsed)) { throw new Error("The embedded payload is not a JSON object."); }
+    if (!isObj(parsed)) { throw new Error(t("err.notObject")); }
     if (!isArr(parsed.baseline) && !isArr(parsed.current)) {
-      throw new Error("The payload carries neither a baseline nor a current event list.");
+      throw new Error(t("err.noEventLists"));
     }
     return parsed;
   }
@@ -635,18 +901,22 @@
     return -1;
   }
   /* ---------- row rendering ---------- */
+  function changeLabel(change) {
+    var key = "change." + String(change);
+    return hasKey(key) ? t(key) : String(change);
+  }
   function changeChip(change, side) {
     if (change === "added" && side !== "current") { return null; }
     if (change === "removed" && side !== "baseline") { return null; }
-    if (change === "changed") { return el("span", "chip chip-changed", "changed"); }
-    if (change === "added") { return el("span", "chip chip-added", "added"); }
-    if (change === "removed") { return el("span", "chip chip-removed", "removed"); }
+    if (change === "changed") { return el("span", "chip chip-changed", changeLabel("changed")); }
+    if (change === "added") { return el("span", "chip chip-added", changeLabel("added")); }
+    if (change === "removed") { return el("span", "chip chip-removed", changeLabel("removed")); }
     return null;
   }
   function emptySlotText(frame, side) {
-    if (frame.change === "added") { return "not in recorded run"; }
-    if (frame.change === "removed") { return "not in replay"; }
-    return side === "baseline" ? "no recorded event" : "no replay event";
+    if (frame.change === "added") { return t("empty.addedRecorded"); }
+    if (frame.change === "removed") { return t("empty.removedReplay"); }
+    return side === "baseline" ? t("empty.noRecorded") : t("empty.noReplay");
   }
   function buildRow(frame, side, index) {
     var ev = side === "baseline" ? frame.base : frame.cur;
@@ -674,7 +944,7 @@
     var head = el("div", "row-head");
     head.appendChild(el("span", "chip chip-kind", ev.kind || "?"));
     head.appendChild(el("span", "row-actor", ev.actor || "\u2014"));
-    if (ev.patched === true) { head.appendChild(el("span", "chip chip-patched", "patched")); }
+    if (ev.patched === true) { head.appendChild(el("span", "chip chip-patched", changeLabel("patched"))); }
     var chip = changeChip(frame.change, side);
     if (chip) { head.appendChild(chip); }
     main.appendChild(head);
@@ -739,9 +1009,11 @@
   function syncTransport() {
     var total = state.frames.length;
     var frame = state.frames[state.index];
-    $("frame-pos").textContent = total ? String(state.index + 1) : "0";
-    $("frame-total").textContent = String(total);
-    $("frame-seq").textContent = frame ? String(frame.seq) : "\u2014";
+    $("status").innerHTML = t("status.line", {
+      frame: total ? String(state.index + 1) : "0",
+      total: String(total),
+      seq: frame ? String(frame.seq) : "—"
+    });
 
     var scrubber = $("scrubber");
     scrubber.max = String(Math.max(0, total - 1));
@@ -752,7 +1024,7 @@
     else if (total === 1) { pct = 100; }
     scrubber.style.setProperty("--fill", pct.toFixed(2) + "%");
     scrubber.setAttribute("aria-valuetext",
-      "frame " + (state.index + 1) + " of " + total + ", seq " + (frame ? frame.seq : "none"));
+      t("scrub.value", { frame: state.index + 1, total: total, seq: frame ? frame.seq : t("assert.none") }));
   }
   function updatePlayButtons() {
     var play = $("btn-play");
@@ -781,7 +1053,7 @@
   function play() {
     if (state.playing) { return; }
     var visible = visibleIndexes();
-    if (!visible.length) { notify("No frames match the current filter."); return; }
+    if (!visible.length) { notify(t("notice.noFrames")); return; }
     if (visible[visible.length - 1] <= state.index) { selectFrame(visible[0]); }
     state.playing = true;
     updatePlayButtons();
@@ -815,11 +1087,11 @@
   }
   function updateFilterNote() {
     var total = state.frames.length;
-    if (!total) { $("filter-note").textContent = "this trace contains no events"; return; }
+    if (!total) { $("filter-note").textContent = t("filter.empty"); return; }
     var shown = visibleIndexes().length;
-    var text = "showing " + shown + " of " + total + " frames \u00b7 playback and stepping follow the filter";
+    var text = t("filter.note", { shown: shown, total: total });
     var first = state.data.diff.first_divergence_seq;
-    if (first !== null && first !== undefined) { text += " \u00b7 first divergence at seq " + first; }
+    if (first !== null && first !== undefined) { text += t("filter.noteDivergence", { seq: first }); }
     $("filter-note").textContent = text;
   }
   function stepForward() {
@@ -857,7 +1129,7 @@
       input.type = "checkbox";
       input.checked = true;
       input.value = kind;
-      input.setAttribute("aria-label", "show " + kind + " events");
+      input.setAttribute("aria-label", t("filter.kindAria", { kind: kind }));
       input.addEventListener("change", function () {
         state.kinds[kind] = input.checked;
         applyRowVisibility();
@@ -892,11 +1164,11 @@
 
     results.forEach(function (result) { counts[normStatus(result.status)] += 1; });
     $("assertion-summary").textContent = results.length
-      ? counts.PASS + " pass \u00b7 " + counts.FAIL + " fail \u00b7 " + counts.SKIP + " skip"
-      : "none";
+      ? t("assert.summary", { pass: counts.PASS, fail: counts.FAIL, skip: counts.SKIP })
+      : t("assert.none");
 
     if (!results.length) {
-      host.appendChild(el("div", "assert-empty", "no assertions recorded for this trace"));
+      host.appendChild(el("div", "assert-empty", t("assert.empty")));
       return;
     }
 
@@ -909,17 +1181,17 @@
       row.appendChild(el("span", "badge badge-" + status.toLowerCase(), status));
 
       var body = el("div");
-      body.appendChild(el("span", "assert-name", result.name || "(unnamed assertion)"));
+      body.appendChild(el("span", "assert-name", result.name || t("assert.unnamed")));
       if (result.detail) { body.appendChild(el("span", "assert-detail", result.detail)); }
       row.appendChild(body);
 
       var offense = result.first_offense_seq;
       if (offense !== null && offense !== undefined) {
-        row.appendChild(el("span", "assert-jump", "seq " + offense));
+        row.appendChild(el("span", "assert-jump", t("seq.tag", { seq: offense })));
       }
 
       if (status === "FAIL") {
-        row.title = "Jump to the first offending frame";
+        row.title = t("assert.jumpTitle");
         row.addEventListener("click", function () { jumpToOffense(result); });
       }
       host.appendChild(row);
@@ -928,12 +1200,12 @@
   function jumpToOffense(result) {
     var offense = result.first_offense_seq;
     if (offense === null || offense === undefined) {
-      notify("This failure records no offense sequence.");
+      notify(t("notice.noOffenseSeq"));
       return;
     }
     var index = indexOfSeq(offense);
     if (index < 0) {
-      notify("Seq " + offense + " is not part of this replay.");
+      notify(t("notice.seqNotInReplay", { seq: offense }));
       return;
     }
 
@@ -948,13 +1220,13 @@
       }
       if (forward >= 0) { target = forward; }
       else if (backward >= 0) { target = backward; }
-      else { notify("Seq " + offense + " has no event on the replay side."); return; }
-      note = " \u2014 seq " + offense + " has no replay event, jumped to the nearest one";
+      else { notify(t("notice.noReplaySide", { seq: offense })); return; }
+      note = t("notice.jumpedNote", { seq: offense });
     }
 
     pause();
     selectFrame(target, true);
-    notify("Jumped to seq " + state.frames[target].seq + note);
+    notify(t("notice.jumped", { seq: state.frames[target].seq, note: note }));
   }
   /* ---------- state diff ---------- */
   function changedKeys(base, cur) {
@@ -974,9 +1246,9 @@
   }
   function diffCell(side, ev) {
     var cell = el("div", "diff-cell");
-    cell.appendChild(el("span", "diff-side", side));
+    cell.appendChild(el("span", "diff-side", side === "baseline" ? t("col.baseline") : t("col.current")));
     if (!ev) {
-      cell.appendChild(el("span", "empty-slot", side === "baseline" ? "not recorded" : "not replayed"));
+      cell.appendChild(el("span", "empty-slot", side === "baseline" ? t("empty.notRecorded") : t("empty.notReplayed")));
       return cell;
     }
     var body = ev.payload === undefined ? ev : ev.payload;
@@ -988,15 +1260,15 @@
     wrap.setAttribute("data-change", row.change);
 
     var head = el("div", "diff-head");
-    head.appendChild(el("span", "seq-tag", "seq " + row.seq));
-    head.appendChild(el("span", "chip chip-" + row.change, row.change));
+    head.appendChild(el("span", "seq-tag", t("seq.tag", { seq: row.seq })));
+    head.appendChild(el("span", "chip chip-" + row.change, changeLabel(row.change)));
     var keys = changedKeys(row.baseline, row.current);
     if (keys.length) { head.appendChild(el("span", "diff-keys", keys.join(", "))); }
-    head.title = "Jump the timeline to this frame";
+    head.title = t("diff.jumpTitle");
     head.style.cursor = "pointer";
     head.addEventListener("click", function () {
       var index = indexOfSeq(row.seq);
-      if (index < 0) { notify("Seq " + row.seq + " is not part of this replay."); return; }
+      if (index < 0) { notify(t("notice.seqNotInReplay", { seq: row.seq })); return; }
       pause();
       selectFrame(index, true);
     });
@@ -1016,16 +1288,15 @@
     host.innerHTML = "";
 
     var summary = rows.length
-      ? rows.length + (rows.length === 1 ? " change" : " changes")
-      : "no divergence";
+      ? t(rows.length === 1 ? "diff.changes" : "diff.changesPlural", { count: rows.length })
+      : t("diff.none");
     if (rows.length && first !== null && first !== undefined) {
-      summary += " \u00b7 first at seq " + first;
+      summary += t("diff.firstAt", { seq: first });
     }
     $("diff-summary").textContent = summary;
 
     if (!rows.length) {
-      host.appendChild(el("div", "diff-empty",
-        "recorded and replayed events agree at payload level"));
+      host.appendChild(el("div", "diff-empty", t("diff.empty")));
       return;
     }
     rows.forEach(function (row) { host.appendChild(diffRow(row)); });
@@ -1043,13 +1314,20 @@
     if (fp.prompt_hash) { bits.push("prompt " + String(fp.prompt_hash).slice(0, 12)); }
     if (header.seed !== undefined && header.seed !== null) { bits.push("seed " + header.seed); }
 
-    $("fp-line").textContent = bits.length ? bits.join(" \u00b7 ") : "no header recorded";
+    $("fp-line").textContent = bits.length ? bits.join(" · ") : t("header.empty");
     $("fp-json").textContent = Object.keys(header).length ? pretty(header) : "{}";
+  }
+  function columnLabel(value, fallbackKey) {
+    var text = value === undefined || value === null ? "" : String(value);
+    if (!text) { return t(fallbackKey); }
+    if (text === "recorded") { return t("col.recorded"); }
+    if (text === "replay") { return t("col.replay"); }
+    return text;
   }
   function renderLabels() {
     var labels = state.data.labels;
-    $("label-baseline").textContent = labels.baseline || "baseline";
-    $("label-current").textContent = labels.current || "current";
+    $("label-baseline").textContent = columnLabel(labels.baseline, "col.baseline");
+    $("label-current").textContent = columnLabel(labels.current, "col.current");
     $("count-baseline").textContent = String(state.data.baseline.length);
     $("count-current").textContent = String(state.data.current.length);
   }
@@ -1057,7 +1335,7 @@
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
     var button = $("theme-toggle");
-    button.textContent = theme === "dark" ? "Light theme" : "Dark theme";
+    button.textContent = t(theme === "dark" ? "theme.toLight" : "theme.toDark");
     button.setAttribute("aria-pressed", theme === "light" ? "true" : "false");
   }
 
@@ -1077,6 +1355,7 @@
   /* ---------- boot ---------- */
   function boot() {
     var data;
+    applyLang(LANG);
     try {
       data = normalize(readPayload());
     } catch (error) {
@@ -1087,13 +1366,13 @@
     state.frames = buildFrames(data);
 
     if (!state.frames.length) {
-      $("filter-note").textContent = "this trace contains no events";
+      $("filter-note").textContent = t("filter.empty");
     }
 
-    $("trace-id").textContent = data.trace_id || "(no trace id)";
-    $("trace-id").setAttribute("title", data.trace_id || "trace id");
-    $("mode-chip").textContent = data.mode || "unknown mode";
-    document.title = "AgentTwin \u2014 replay" + (data.trace_id ? " " + data.trace_id : "");
+    $("trace-id").textContent = data.trace_id || t("trace.none");
+    $("trace-id").setAttribute("title", data.trace_id || t("trace.title"));
+    $("mode-chip").textContent = data.mode || t("mode.unknown");
+    document.title = t("doc.title") + (data.trace_id ? " " + data.trace_id : "");
 
     renderLabels();
     renderHeader();
@@ -1104,6 +1383,7 @@
     renderStateDiff();
     applyTheme("dark");
     updatePlayButtons();
+    applyLang(LANG);
 
     $("error-panel").hidden = true;
     $("shell").hidden = false;
@@ -1114,6 +1394,10 @@
   function wire() {
     $("theme-toggle").addEventListener("click", function () {
       applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
+    });
+
+    $("lang-toggle").addEventListener("click", function () {
+      setLang(LANG === "zh" ? "en" : "zh");
     });
 
     $("btn-play").addEventListener("click", function () { play(); });
@@ -1145,7 +1429,7 @@
       $("actor-filter").value = "";
       state.actorQuery = "";
       applyRowVisibility();
-      notify("Filters reset.");
+      notify(t("filter.resetNotice"));
     });
 
     document.addEventListener("keydown", function (event) {
@@ -1174,7 +1458,7 @@
     wire();
     boot();
   } catch (error) {
-    showFatal("Unexpected error while rendering this trace: " +
+    showFatal(t("err.unexpected") +
       (error && error.message ? error.message : String(error)));
   }
 }());
