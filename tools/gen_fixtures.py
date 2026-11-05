@@ -1,4 +1,4 @@
-"""Regenerate the ten committed gallery tapes (design doc section 8).
+"""Regenerate the committed gallery tapes (design doc section 8).
 
 Every byte under src/agenttwin/fixtures/ is produced by this script: the tapes are
 real recordings made through Twin.record, not hand-written JSONL.  The llm and the
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -26,12 +27,16 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from agenttwin import Twin  # noqa: E402
 from agenttwin import gallery  # noqa: E402
+from agenttwin.trace import Trace  # noqa: E402
 
 FIXTURES = REPO_ROOT / "src" / "agenttwin" / "fixtures"
 
 
 def record(fixture: "gallery.Fixture", *, out_dir: Path = FIXTURES) -> Path:
     """Record one fixture by running its own controller against its own offline fakes."""
+    # The frozen fingerprint describes the original fixture recording. Retain it
+    # when regenerating on a different host or package version.
+    fingerprint = Trace.load(fixture.tape).header.env_fingerprint if fixture.tape.exists() else None
     path = Path(out_dir) / f"{fixture.id}.jsonl"
     with Twin.record(
         f"gallery-{fixture.id}",
@@ -43,6 +48,9 @@ def record(fixture: "gallery.Fixture", *, out_dir: Path = FIXTURES) -> Path:
     ) as recorder:
         result = fixture.agent(recorder.llm, recorder.tools())
         recorder.returned(result)
+    if fingerprint is not None:
+        trace = Trace.load(path)
+        Trace(header=replace(trace.header, env_fingerprint=fingerprint), events=trace.events).save(path)
     return path
 
 
