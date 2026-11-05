@@ -114,7 +114,7 @@ Two things that are easy to miss:
 - `Twin.load("checkout.jsonl").replay(agent)` takes no `llm=` and no `tools=`: both the model and the tools come from the tape. `llm(...)` returns the response as recorded, `tools["lookup_order"](...)` returns the result as recorded, and the real functions are never called.
 - `sys.exit(report.exit_code)` turns the assertion result into an ordinary exit code that `pytest` or any CI consumes directly.
 
-The same result in three shapes: `report.markdown()` (a table for humans), `report.json()` (for machines, with fixed top-level keys `schema_version` / `trace_id` / `mode` / `divergent` / `exit_code` / `results` / `misses` / `drifts` / `diff` / `header`), and `report.html("report.html")` (a single-file report, no external references, opens straight from `file://`; the byte count above varies a little with the tape and the environment).
+The same result in three shapes: `report.markdown()` (a table for humans), `report.json()` (for machines, with fixed top-level keys `schema_version` / `trace_id` / `mode` / `divergent` / `exit_code` / `results` / `misses` / `drifts` / `diff` / `header`), and `report.html("report.html")` (a single-file report, no external references, opens straight from `file://`; the byte count above varies a little with the tape and the environment). The viewer carries an English/Chinese switch in its header (the choice is remembered in `localStorage`); the recorded tape text itself is never translated.
 
 ## 3. A changed request is a hard failure
 
