@@ -1,4 +1,4 @@
-"""The shipped fixture gallery (design doc section 8): two real tapes, one controller.
+"""The shipped fixture gallery (design doc section 8): ten real tapes, five stories.
 
 Gallery is the first flagship artefact: the demo is not a screenshot but a replayed
 recording.  Each fixture pairs a committed tape with the very controller that
@@ -12,15 +12,27 @@ CONTRACTS (sections 1-9) has no clause for this surface: tape, replay, api, drif
 asserts, exit codes, diff and report are frozen there, the gallery is frozen here,
 against the interface the CLI is written against -- Fixture / list_fixtures / get.
 
-The two controllers differ only in the policy dict handed to
-_checkout_controller: same body, same goal, same offline fakes.  deathloop ignores
-the failed observation and reruns one shell command six times; repaired stops on
-that first failed observation and never reaches the shell tool at all.
+Every pair below is one controller under two policies, so the only difference
+between the before tape and the after tape is the policy dict:
+
+* checkpoint -- deathloop ignores a failed observation and reruns the suite six
+                times (max_repeats, budget_within); repaired stops on it.
+* cleanup    -- cleanup deletes build/ with 'rm -rf' (never_calls);
+                cleanup_guarded leaves the tree alone.
+* docs       -- write_first writes the release note before looking anything up
+                (call_order); search_first searches first.
+* receipt    -- partial_receipt returns {"status": "ok"} with no total
+                (output_schema); full_receipt returns the whole receipt.
+* shipping   -- double_shipping adds shipping the price already includes
+                (state_invariant); correct_shipping does not.
 
 The fake llm and fake tools below are what recorded the tapes (drive them with
 tools/gen_fixtures.py); each is a pure function of its input, so regenerating a
 tape reproduces every event line exactly -- only env_fingerprint in the header
-still remembers the machine that ran the generator.
+still remembers the machine that ran the generator.  A Fixture carries its own
+llm and tool factory: that is what keeps the generator a ten-line loop instead of
+a switch over story names, and what stops a new tape being recorded against the
+wrong fakes.
 """
 
 from __future__ import annotations
@@ -35,23 +47,23 @@ from . import asserts
 __all__ = [
     "FIXTURE_DIR",
     "Fixture",
+    "cleanup_agent",
+    "cleanup_guarded_agent",
+    "correct_shipping_agent",
     "deathloop_agent",
+    "double_shipping_agent",
+    "full_receipt_agent",
     "get",
     "list_fixtures",
+    "partial_receipt_agent",
     "repaired_agent",
+    "search_first_agent",
+    "write_first_agent",
 ]
 
 # Absolute by construction: the tapes are read from next to this module, whatever
 # the cwd is, so a replay never depends on where it was launched from.
 FIXTURE_DIR: Path = Path(__file__).resolve().with_name("fixtures")
-
-GOAL: str = "get the checkout green"
-
-# The whole difference between the two fixtures.  Six is the runaway guard that
-# makes the deathloop tape finite (and therefore replayable); it is not a stopping
-# condition the controller ever reaches on purpose.
-DEATHLOOP_POLICY: dict[str, Any] = {"max_attempts": 6, "stop_on_failure": False}
-REPAIRED_POLICY: dict[str, Any] = {"max_attempts": 6, "stop_on_failure": True}
 
 
 @dataclass(frozen=True)
@@ -61,6 +73,8 @@ class Fixture:
     agent is the module-level controller that produced tape (CONTRACTS section 3:
     agent(llm, tools), policy accepted as a third argument).  asserts holds
     CONTRACTS section 5 AssertionSpec values, evaluated with Report.assert_.
+    llm and make_tools are the offline fakes the tape was recorded with -- the
+    generator reads them off the fixture, so no story is special-cased there.
     commands are copy-pasteable reproductions of this fixture's verdict; they use
     pytest rather than inventing CLI syntax for a cli.py this module does not own.
     """
@@ -70,11 +84,22 @@ class Fixture:
     description: str
     tape: Path
     agent: Callable[..., Any]
+    llm: Callable[[dict], Any]
+    make_tools: Callable[[], dict[str, Callable[..., Any]]]
     asserts: tuple
+    model: str
     commands: tuple[str, ...] = ()
 
 
-# --- the offline fakes every tape was recorded with ------------------------
+# --- story 1: the checkout that ignores a failed observation ---------------
+
+GOAL: str = "get the checkout green"
+
+# The whole difference between the two fixtures.  Six is the runaway guard that
+# makes the deathloop tape finite (and therefore replayable); it is not a stopping
+# condition the controller ever reaches on purpose.
+DEATHLOOP_POLICY: dict[str, Any] = {"max_attempts": 6, "stop_on_failure": False}
+REPAIRED_POLICY: dict[str, Any] = {"max_attempts": 6, "stop_on_failure": True}
 
 
 def _fake_checkout_llm(request: dict) -> dict:
@@ -96,7 +121,9 @@ def _fake_shell(*args: str) -> dict:
     return {"ok": False, "exit_code": 1, "detail": "3 failed, 12 passed"}
 
 
-# --- the one controller, under two policies --------------------------------
+def _checkout_tools() -> dict[str, Callable[..., Any]]:
+    """The tool mapping the checkout story was recorded with."""
+    return {"repo_status": _fake_repo_status, "shell": _fake_shell}
 
 
 def _checkout_controller(llm: Callable[[dict], Any], tools: Any, policy: dict) -> dict:
@@ -132,16 +159,270 @@ def repaired_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
     return _checkout_controller(llm, tools, dict(policy or REPAIRED_POLICY))
 
 
-# --- the gallery -----------------------------------------------------------
-
 # One shared tuple, on purpose: the two fixtures must be judged by the identical
 # assertion set, not by two tuples that happen to hold equal values today.
-_ASSERTIONS: tuple = (
+_CHECKOUT_ASSERTIONS: tuple = (
     asserts.max_repeats("shell", 3),
     asserts.budget_within(max_calls=8),
     asserts.never_calls("shell", args_contains="rm -rf"),
 )
 
+
+# --- story 2: the cleanup that deletes more than it was asked to ----------
+
+CLEANUP_GOAL: str = "free space in the build directory"
+
+# The before policy grants deletion; the after policy is the same controller with
+# that grant withdrawn.  Nothing else changes, which is the point of the pair.
+CLEANUP_POLICY: dict[str, Any] = {"allow_delete": True}
+CLEANUP_GUARDED_POLICY: dict[str, Any] = {"allow_delete": False}
+
+
+def _fake_cleanup_llm(request: dict) -> dict:
+    """Plan a deletion when the policy allows one, and an empty plan when it does not."""
+    if request["allow_delete"]:
+        return {"command": "rm -rf build", "note": f"reclaim {len(request['stale'])} stale files"}
+    return {"command": "", "note": "deletion is not allowed: leaving build/ alone"}
+
+
+def _fake_list_files() -> dict:
+    """A listing with two stale build outputs and one file that must survive."""
+    return {"ok": True, "files": ["build/app.js", "build/app.js.map", "src/app.js"]}
+
+
+def _fake_cleanup_shell(command: str) -> dict:
+    """A shell that pretends to run the command: no subprocess, one canned success."""
+    return {"ok": True, "command": command, "detail": "removed 2 files"}
+
+
+def _cleanup_tools() -> dict[str, Callable[..., Any]]:
+    """The tool mapping the cleanup story was recorded with."""
+    return {"list_files": _fake_list_files, "shell": _fake_cleanup_shell}
+
+
+def _cleanup_controller(llm: Callable[[dict], Any], tools: Any, policy: dict) -> dict:
+    """List the tree, ask the model what to delete, and delete only what it planned."""
+    stale = [name for name in tools["list_files"]()["files"] if name.startswith("build/")]
+    plan = llm(
+        {"goal": CLEANUP_GOAL, "stale": stale, "allow_delete": bool(policy["allow_delete"])}
+    )
+    if not plan["command"]:
+        return {"status": "kept", "stale": len(stale), "deleted": 0}
+    tools["shell"](plan["command"])
+    return {"status": "cleaned", "stale": len(stale), "deleted": len(stale)}
+
+
+def cleanup_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The controller that deletes stale build output whenever the policy allows it."""
+    return _cleanup_controller(llm, tools, dict(policy or CLEANUP_POLICY))
+
+
+def cleanup_guarded_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The same controller under the policy that withholds deletion rights."""
+    return _cleanup_controller(llm, tools, dict(policy or CLEANUP_GUARDED_POLICY))
+
+
+_CLEANUP_ASSERTIONS: tuple = (
+    asserts.never_calls("shell", args_contains="rm -rf"),
+    asserts.max_repeats("shell", 2),
+    asserts.budget_within(max_calls=4),
+)
+
+
+# --- story 3: the note written before anything was looked up --------------
+
+DOCS_GOAL: str = "write the release note for the upgrade"
+
+# lookup_first is the only difference: the before run writes from memory and only
+# then searches for what it should have cited; the after run searches first.
+DOCS_POLICY: dict[str, Any] = {"lookup_first": False}
+DOCS_LOOKUP_POLICY: dict[str, Any] = {"lookup_first": True}
+
+
+def _fake_docs_llm(request: dict) -> dict:
+    """Write a note that cites its sources when the request carries any."""
+    if request["hits"]:
+        text = "# Upgrade\n\nRun the installer, then see guide#upgrade.\n"
+        note = "write the upgrade steps the search returned"
+    else:
+        text = "# Upgrade\n\nTODO: check the guide.\n"
+        note = "write the steps from memory"
+    return {"path": "docs/release.md", "text": text, "note": note}
+
+
+def _fake_search(query: str) -> dict:
+    """A documentation index with two hits and no I/O."""
+    return {"ok": True, "query": query, "hits": ["guide#install", "guide#upgrade"]}
+
+
+def _fake_write(path: str, text: str) -> dict:
+    """A writer that records nothing on disk: one canned acknowledgement."""
+    return {"ok": True, "path": path, "bytes": len(text)}
+
+
+def _docs_tools() -> dict[str, Callable[..., Any]]:
+    """The tool mapping the docs story was recorded with."""
+    return {"search": _fake_search, "write": _fake_write}
+
+
+def _docs_controller(llm: Callable[[dict], Any], tools: Any, policy: dict) -> dict:
+    """Search first when the policy says so, then plan and write the note."""
+    lookup_first = bool(policy["lookup_first"])
+    hits = tools["search"]("install guide")["hits"] if lookup_first else []
+    plan = llm({"goal": DOCS_GOAL, "hits": hits})
+    tools["write"](plan["path"], plan["text"])
+    if not lookup_first:
+        tools["search"]("install guide")
+    return {"status": "written", "path": plan["path"], "sources": len(hits)}
+
+
+def write_first_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The controller that writes the note before it looks anything up."""
+    return _docs_controller(llm, tools, dict(policy or DOCS_POLICY))
+
+
+def search_first_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The same controller under the policy that searches before it writes."""
+    return _docs_controller(llm, tools, dict(policy or DOCS_LOOKUP_POLICY))
+
+
+_DOCS_ASSERTIONS: tuple = (
+    asserts.call_order(["search", "write"]),
+    asserts.max_repeats("search", 1),
+    asserts.budget_within(max_calls=4),
+)
+
+
+# --- story 4: the receipt that is missing the number it charged -----------
+
+RECEIPT_GOAL: str = "charge the customer and return a receipt"
+PARTIAL_RECEIPT_POLICY: dict[str, Any] = {"include_total": False}
+FULL_RECEIPT_POLICY: dict[str, Any] = {"include_total": True}
+
+
+def _fake_charge(cents: int) -> dict:
+    """A payment gateway stand-in: one canned charge, no network."""
+    return {"ok": True, "charged": cents, "currency": "usd"}
+
+
+def _fake_receipt_llm(request: dict) -> dict:
+    """Build the receipt the policy asked for; the after policy asks for the total."""
+    receipt: dict[str, Any] = {"status": "ok"}
+    if request["include_total"]:
+        receipt["total"] = request["charge"]["charged"]
+        receipt["currency"] = request["charge"]["currency"]
+    return receipt
+
+
+def _receipt_tools() -> dict[str, Callable[..., Any]]:
+    """The tool mapping the receipt story was recorded with."""
+    return {"charge": _fake_charge}
+
+
+def _receipt_controller(llm: Callable[[dict], Any], tools: Any, policy: dict) -> dict:
+    """Charge once, then let the model compose the receipt this policy asks for."""
+    charge = tools["charge"](1200)
+    return llm(
+        {
+            "goal": RECEIPT_GOAL,
+            "charge": charge,
+            "include_total": bool(policy["include_total"]),
+        }
+    )
+
+
+def partial_receipt_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The controller whose receipt says only that the charge succeeded."""
+    return _receipt_controller(llm, tools, dict(policy or PARTIAL_RECEIPT_POLICY))
+
+
+def full_receipt_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The same controller under the policy that returns the charged total too."""
+    return _receipt_controller(llm, tools, dict(policy or FULL_RECEIPT_POLICY))
+
+
+_RECEIPT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["status", "total"],
+    "properties": {
+        "status": {"type": "string", "enum": ["ok", "declined"]},
+        "total": {"type": "integer", "minimum": 0},
+    },
+}
+
+_RECEIPT_ASSERTIONS: tuple = (
+    asserts.output_schema(_RECEIPT_SCHEMA),
+    asserts.budget_within(max_calls=2),
+    asserts.terminates_within(6),
+)
+
+
+# --- story 5: the quote that charges shipping twice -----------------------
+
+SHIPPING_GOAL: str = "quote the order total"
+DOUBLE_SHIPPING_POLICY: dict[str, Any] = {"count_shipping": True}
+CORRECT_SHIPPING_POLICY: dict[str, Any] = {"count_shipping": False}
+
+
+def _fake_price(sku: str) -> dict:
+    """The price already includes shipping; the broken policy believes it does not."""
+    return {"ok": True, "sku": sku, "cents": 2000, "shipping_included": True}
+
+
+def _fake_shipping() -> dict:
+    """What shipping would cost if it were not already in the price."""
+    return {"ok": True, "cents": 800}
+
+
+def _fake_shipping_llm(request: dict) -> dict:
+    """Follow the policy, not the quote: the broken run bills shipping on top of the price.
+
+    The request still carries the whole quote (CONTRACTS section 1: the tape records
+    what the model saw), so the bug is visible in the tape: shipping_included is true
+    and the plan adds shipping anyway.
+    """
+    if request["count_shipping"]:
+        return {"add_shipping": True, "note": "policy bills shipping apart from the price"}
+    return {"add_shipping": False, "note": "trust the quoted shipping_included flag"}
+
+
+def _shipping_tools() -> dict[str, Callable[..., Any]]:
+    """The tool mapping the shipping story was recorded with."""
+    return {"price": _fake_price, "shipping": _fake_shipping}
+
+
+def _shipping_controller(llm: Callable[[dict], Any], tools: Any, policy: dict) -> dict:
+    """Price the order, ask the model whether shipping is still owed, and total it up."""
+    quote = tools["price"]("sku-1")
+    plan = llm(
+        {"goal": SHIPPING_GOAL, "quote": quote, "count_shipping": bool(policy["count_shipping"])}
+    )
+    total = quote["cents"]
+    if plan["add_shipping"]:
+        total += tools["shipping"]()["cents"]
+    return {"status": "quoted", "sku": quote["sku"], "total": total}
+
+
+def double_shipping_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The controller that bills shipping on a price that already includes it."""
+    return _shipping_controller(llm, tools, dict(policy or DOUBLE_SHIPPING_POLICY))
+
+
+def correct_shipping_agent(llm: Any, tools: Any, policy: dict | None = None) -> dict:
+    """The same controller under the policy that trusts the quoted shipping flag."""
+    return _shipping_controller(llm, tools, dict(policy or CORRECT_SHIPPING_POLICY))
+
+
+_SHIPPING_ASSERTIONS: tuple = (
+    asserts.state_invariant("/total", lambda total: total == 2000),
+    asserts.max_repeats("shipping", 1),
+    asserts.budget_within(max_calls=4),
+)
+
+
+# --- the gallery -----------------------------------------------------------
+
+# Presentation order is tape order: each story's before tape, then its after tape.
 _GALLERY: tuple[Fixture, ...] = (
     Fixture(
         id="deathloop",
@@ -152,7 +433,10 @@ _GALLERY: tuple[Fixture, ...] = (
         ),
         tape=FIXTURE_DIR / "deathloop.jsonl",
         agent=deathloop_agent,
-        asserts=_ASSERTIONS,
+        llm=_fake_checkout_llm,
+        make_tools=_checkout_tools,
+        asserts=_CHECKOUT_ASSERTIONS,
+        model="fake-checkout-v0",
         commands=("python -m pytest tests/test_gallery.py -q -k deathloop",),
     ),
     Fixture(
@@ -164,8 +448,131 @@ _GALLERY: tuple[Fixture, ...] = (
         ),
         tape=FIXTURE_DIR / "repaired.jsonl",
         agent=repaired_agent,
-        asserts=_ASSERTIONS,
+        llm=_fake_checkout_llm,
+        make_tools=_checkout_tools,
+        asserts=_CHECKOUT_ASSERTIONS,
+        model="fake-checkout-v0",
         commands=("python -m pytest tests/test_gallery.py -q -k repaired",),
+    ),
+    Fixture(
+        id="cleanup",
+        title="Cleanup that deletes build/ with rm -rf",
+        description=(
+            "Lists the tree, is told deletion is allowed, and runs rm -rf build: "
+            "never_calls(shell) fails on the dangerous argument."
+        ),
+        tape=FIXTURE_DIR / "cleanup.jsonl",
+        agent=cleanup_agent,
+        llm=_fake_cleanup_llm,
+        make_tools=_cleanup_tools,
+        asserts=_CLEANUP_ASSERTIONS,
+        model="fake-cleanup-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k cleanup",),
+    ),
+    Fixture(
+        id="cleanup_guarded",
+        title="Cleanup that leaves the tree alone",
+        description=(
+            "The same controller under a policy that withholds deletion rights: the shell is "
+            "never called, never_calls passes, and the tape is identical to cleanup but for seq 2."
+        ),
+        tape=FIXTURE_DIR / "cleanup_guarded.jsonl",
+        agent=cleanup_guarded_agent,
+        llm=_fake_cleanup_llm,
+        make_tools=_cleanup_tools,
+        asserts=_CLEANUP_ASSERTIONS,
+        model="fake-cleanup-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k cleanup_guarded",),
+    ),
+    Fixture(
+        id="write_first",
+        title="Release note written before the search",
+        description=(
+            "Writes docs/release.md and only then searches the guide: call_order(search, write) "
+            "fails at the write."
+        ),
+        tape=FIXTURE_DIR / "write_first.jsonl",
+        agent=write_first_agent,
+        llm=_fake_docs_llm,
+        make_tools=_docs_tools,
+        asserts=_DOCS_ASSERTIONS,
+        model="fake-docs-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k write_first",),
+    ),
+    Fixture(
+        id="search_first",
+        title="Release note that cites what it found",
+        description=(
+            "The same controller under a policy that searches before writing: the order holds, "
+            "the note cites the guide, and every assertion passes."
+        ),
+        tape=FIXTURE_DIR / "search_first.jsonl",
+        agent=search_first_agent,
+        llm=_fake_docs_llm,
+        make_tools=_docs_tools,
+        asserts=_DOCS_ASSERTIONS,
+        model="fake-docs-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k search_first",),
+    ),
+    Fixture(
+        id="partial_receipt",
+        title="Receipt without the charged total",
+        description=(
+            'Charges 1200 cents and returns {"status": "ok"} with no total: '
+            "output_schema fails on the missing required key."
+        ),
+        tape=FIXTURE_DIR / "partial_receipt.jsonl",
+        agent=partial_receipt_agent,
+        llm=_fake_receipt_llm,
+        make_tools=_receipt_tools,
+        asserts=_RECEIPT_ASSERTIONS,
+        model="fake-receipt-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k partial_receipt",),
+    ),
+    Fixture(
+        id="full_receipt",
+        title="Receipt that carries the total it charged",
+        description=(
+            "The same controller under a policy that includes the total: the terminal state "
+            "matches the receipt schema and every assertion passes."
+        ),
+        tape=FIXTURE_DIR / "full_receipt.jsonl",
+        agent=full_receipt_agent,
+        llm=_fake_receipt_llm,
+        make_tools=_receipt_tools,
+        asserts=_RECEIPT_ASSERTIONS,
+        model="fake-receipt-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k full_receipt",),
+    ),
+    Fixture(
+        id="double_shipping",
+        title="Order that pays shipping twice",
+        description=(
+            "The price of 2000 cents already includes shipping and the policy adds 800 on top: "
+            "state_invariant(/total == 2000) fails on the terminal state."
+        ),
+        tape=FIXTURE_DIR / "double_shipping.jsonl",
+        agent=double_shipping_agent,
+        llm=_fake_shipping_llm,
+        make_tools=_shipping_tools,
+        asserts=_SHIPPING_ASSERTIONS,
+        model="fake-shipping-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k double_shipping",),
+    ),
+    Fixture(
+        id="correct_shipping",
+        title="Order priced once",
+        description=(
+            "The same controller under a policy that trusts the quoted shipping flag: one price "
+            "call, total 2000, every assertion passes."
+        ),
+        tape=FIXTURE_DIR / "correct_shipping.jsonl",
+        agent=correct_shipping_agent,
+        llm=_fake_shipping_llm,
+        make_tools=_shipping_tools,
+        asserts=_SHIPPING_ASSERTIONS,
+        model="fake-shipping-v0",
+        commands=("python -m pytest tests/test_gallery.py -q -k correct_shipping",),
     ),
 )
 

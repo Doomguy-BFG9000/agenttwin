@@ -232,7 +232,7 @@ Python 3.10+，运行时零第三方依赖：`pyproject.toml` 里 `dependencies 
 
 ### 命令行
 
-装好之后 `agenttwin` 和 `python -m agenttwin` 是同一个入口（`agenttwin.cli:main`），五个子命令：`record` / `replay` / `diff` / `doctor` / `gallery`。先不录 tape，看仓库自带的两个 fixture：
+装好之后 `agenttwin` 和 `python -m agenttwin` 是同一个入口（`agenttwin.cli:main`），五个子命令：`record` / `replay` / `diff` / `doctor` / `gallery`。先不录 tape，看仓库自带的十个 fixture（五组 before / after，每组一个断言族）：
 
 ```bash
 python -m agenttwin gallery list
@@ -244,6 +244,14 @@ python -m agenttwin gallery run deathloop
 ```text
 deathloop  Checkout retry loop
 repaired  Checkout that stops on the failed observation
+cleanup  Cleanup that deletes build/ with rm -rf
+cleanup_guarded  Cleanup that leaves the tree alone
+write_first  Release note written before the search
+search_first  Release note that cites what it found
+partial_receipt  Receipt without the charged total
+full_receipt  Receipt that carries the total it charged
+double_shipping  Order that pays shipping twice
+correct_shipping  Order priced once
 
 # AgentTwin report: gallery-deathloop
 
@@ -259,13 +267,13 @@ strict: no
 | never_calls(shell, args_contains='rm -rf') | PASS | no call of shell matches | - |
 ```
 
-`gallery run deathloop` 的退出码是 1，`gallery run repaired` 是 0：同一个断言集，区别只是那个 agent 会不会在第 13 次重复调用同一个工具。`python -m agenttwin <command> --help` 看每个命令的参数。
+`gallery run deathloop` 的退出码是 1，`gallery run repaired` 是 0：同一个断言集，区别只是那个 agent 会不会在第 13 次重复调用同一个工具。另外四组是同一个形状：`cleanup` / `cleanup_guarded`（`never_calls`）、`write_first` / `search_first`（`call_order`）、`partial_receipt` / `full_receipt`（`output_schema`）、`double_shipping` / `correct_shipping`（`state_invariant`）。`python -m agenttwin <command> --help` 看每个命令的参数。
 
 ## 状态
 
 0.1.0 是仓库里的版本号，不是发布号：还没有对外发布。
 
-- 已完成并有测试：录制/回放核心（`Twin.record` / `Twin.load`）、drift 检测、9 个断言工厂 + 组合子 + YAML 加载、`TraceDiff`、`Report`（JSON / Markdown / 单文件 HTML）、`agenttwin` 的五个子命令、openai-compatible adapter（鸭子类型，不 import SDK）、两个内置 fixture。
+- 已完成并有测试：录制/回放核心（`Twin.record` / `Twin.load`）、drift 检测、9 个断言工厂 + 组合子 + YAML 加载、`TraceDiff`、`Report`（JSON / Markdown / 单文件 HTML）、`agenttwin` 的五个子命令、openai-compatible adapter（鸭子类型，不 import SDK）、十个内置 fixture（五组 before / after）。
 - 未验证：`.github/workflows/ci.yml` 只在本地解析过 YAML，没有在 GitHub 上真正跑过；本机沙箱装不了包，所以示例都用 `PYTHONPATH=src` 跑，`agenttwin` 控制台脚本由 `pyproject.toml` 声明但没真正执行过（`python -m agenttwin` 跑过）。
 - 还没做：PyPI 发布、覆盖率门槛、任何托管服务或 dashboard。
 

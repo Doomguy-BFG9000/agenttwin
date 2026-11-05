@@ -1,12 +1,13 @@
-"""The gallery story end to end: one assertion set, FAIL before / PASS after.
+"""The gallery story end to end: five pairs, one assertion set per pair, FAIL then PASS.
 
 Design doc section 8 makes the gallery the first flagship artefact, so these tests
 are not smoke tests: they judge each committed tape with the very controller that
 recorded it (CONTRACTS section 3 -- Record and Replay inject their own llm/tools,
 so the same callable runs in both modes), and they pin the claims the gallery
-makes: deathloop fails the shared assertions, repaired passes them, both replay
-offline, and every committed line is still what tools/gen_fixtures.py records -- the
-machine fingerprint aside, which CONTRACTS 9.21 keeps non-fatal.
+makes: every before tape fails exactly the assertions GALLERY_CLAIMS names, every
+after tape passes all of them while covering the same assertion family, each tape
+replays offline, and every committed line is still what tools/gen_fixtures.py
+records -- the machine fingerprint aside, which CONTRACTS 9.21 keeps non-fatal.
 
 CONTRACTS 9.17: pytest tmp_path is unusable here, every scratch path goes through
 the tape_dir fixture from tests/conftest.py.
@@ -35,6 +36,46 @@ EXPECTED_ASSERTIONS = (
     "budget_within(calls<=8)",
     "never_calls(shell, args_contains='rm -rf')",
 )
+
+
+# Gallery order is presentation order: each story's before tape, then its after tape.
+ALL_IDS = [
+    "deathloop",
+    "repaired",
+    "cleanup",
+    "cleanup_guarded",
+    "write_first",
+    "search_first",
+    "partial_receipt",
+    "full_receipt",
+    "double_shipping",
+    "correct_shipping",
+]
+
+# Every pair is one controller under two policies, so the pair must be judged by
+# one shared assertion tuple -- not by two tuples that happen to be equal today.
+PAIRS = [
+    ("deathloop", "repaired"),
+    ("cleanup", "cleanup_guarded"),
+    ("write_first", "search_first"),
+    ("partial_receipt", "full_receipt"),
+    ("double_shipping", "correct_shipping"),
+]
+
+# The verdict each tape publishes: exit code and the assertions it is meant to fail.
+# Spelled out here so a drifting story is a failing test, not a re-recorded tape.
+GALLERY_CLAIMS = {
+    "deathloop": (1, {"max_repeats(shell, n=3)", "budget_within(calls<=8)"}),
+    "repaired": (0, set()),
+    "cleanup": (1, {"never_calls(shell, args_contains='rm -rf')"}),
+    "cleanup_guarded": (0, set()),
+    "write_first": (1, {"call_order(search>write)"}),
+    "search_first": (0, set()),
+    "partial_receipt": (1, {"output_schema(object)"}),
+    "full_receipt": (0, set()),
+    "double_shipping": (1, {"state_invariant(/total)"}),
+    "correct_shipping": (0, set()),
+}
 
 
 def judged(fixture: gallery.Fixture):
@@ -87,7 +128,7 @@ def scrubbed_payloads(path: Path) -> list:
 def test_ids_are_unique_and_every_filename_matches_its_id():
     fixtures = gallery.list_fixtures()
     ids = [fixture.id for fixture in fixtures]
-    assert ids == ["deathloop", "repaired"]
+    assert ids == ALL_IDS
     assert len(set(ids)) == len(ids)
     for fixture in fixtures:
         assert fixture.tape.name == fixture.id + ".jsonl"
@@ -97,12 +138,17 @@ def test_ids_are_unique_and_every_filename_matches_its_id():
         assert isinstance(fixture.asserts, tuple)
         assert isinstance(fixture.commands, tuple)
         assert callable(fixture.agent)
+        assert callable(fixture.llm)
+        assert callable(fixture.make_tools)
+        tools = fixture.make_tools()
+        assert tools and all(callable(tool) for tool in tools.values())
+        assert fixture.model
         assert fixture.title and fixture.description
 
 
 def test_get_returns_the_gallery_entry_and_raises_keyerror_for_an_unknown_id():
     assert gallery.get("deathloop") is gallery.get("deathloop")
-    assert {fixture.id for fixture in gallery.list_fixtures()} == {"deathloop", "repaired"}
+    assert {fixture.id for fixture in gallery.list_fixtures()} == set(ALL_IDS)
     with pytest.raises(KeyError):
         gallery.get("nope")
     with pytest.raises(KeyError):
@@ -117,6 +163,56 @@ def test_the_two_fixtures_share_one_assertion_set_and_two_controllers():
     assert deathloop.agent is gallery.deathloop_agent
     assert repaired.agent is gallery.repaired_agent
     assert deathloop.agent is not repaired.agent
+
+def test_every_pair_is_one_assertion_set_one_llm_and_two_controllers():
+    for before_id, after_id in PAIRS:
+        before = gallery.get(before_id)
+        after = gallery.get(after_id)
+        assert before.asserts is after.asserts, before_id
+        assert before.llm is after.llm, before_id
+        assert before.make_tools is after.make_tools, before_id
+        assert before.model == after.model, before_id
+        assert before.agent is not after.agent, before_id
+
+
+@pytest.mark.parametrize("fixture_id", ALL_IDS)
+def test_each_tape_matches_its_published_verdict(fixture_id):
+    expected_exit, expected_failures = GALLERY_CLAIMS[fixture_id]
+    report = judged(gallery.get(fixture_id))
+
+    assert report.exit_code == expected_exit
+    assert report.divergent is False
+    assert report.misses == []
+    assert report.drifts == []
+    failed = {result.name for result in report.results if result.passed is False}
+    assert failed == expected_failures
+    # A SKIP row would mean the tape is too thin to judge: every shipped tape must
+    # produce a verdict on every assertion in its own set (CONTRACTS 9.27).
+    for result in report.results:
+        assert result.passed in (True, False), f"{fixture_id}: {result.name} was skipped"
+        assert result.detail
+        if result.passed:
+            assert result.first_offense_seq is None, result.name
+        else:
+            assert result.first_offense_seq is not None, result.name
+
+
+@pytest.mark.parametrize("fixture_id", ALL_IDS)
+def test_every_committed_tape_stays_small_enough_to_read(fixture_id):
+    assert gallery.get(fixture_id).tape.stat().st_size < 8 * 1024
+
+
+def test_both_readmes_quote_the_gallery_list_verbatim():
+    """The gallery.list transcript in both READMEs must stay the real command output.
+
+    The transcripts were re-recorded when the gallery grew from two fixtures to ten;
+    without this the next story added would leave both READMEs advertising a shorter
+    gallery than the package ships.
+    """
+    expected = "\n".join(f"{fixture.id}  {fixture.title}" for fixture in gallery.list_fixtures())
+    for name in ("README.md", "README.zh-CN.md"):
+        text = (REPO_ROOT / name).read_text(encoding="utf-8")
+        assert expected in text, f"{name} does not quote the current gallery list"
 
 
 def test_deathloop_repeats_one_shell_call_and_fails_the_shared_assertions():
@@ -170,7 +266,7 @@ def test_repaired_passes_the_identical_assertions_without_touching_the_shell():
     )
 
 
-@pytest.mark.parametrize("fixture_id", ["deathloop", "repaired"])
+@pytest.mark.parametrize("fixture_id", ALL_IDS)
 def test_replay_reproduces_the_recorded_events_payload_for_payload(fixture_id):
     fixture = gallery.get(fixture_id)
     tape = Trace.load(fixture.tape)
@@ -182,7 +278,7 @@ def test_replay_reproduces_the_recorded_events_payload_for_payload(fixture_id):
     ]
 
 
-@pytest.mark.parametrize("fixture_id", ["deathloop", "repaired"])
+@pytest.mark.parametrize("fixture_id", ALL_IDS)
 def test_replay_needs_no_socket_at_all(fixture_id, monkeypatch):
     def refuse(*args, **kwargs):
         raise AssertionError("replay opened a socket")
@@ -192,7 +288,7 @@ def test_replay_needs_no_socket_at_all(fixture_id, monkeypatch):
     assert judged(gallery.get(fixture_id)).divergent is False
 
 
-@pytest.mark.parametrize("fixture_id", ["deathloop", "repaired"])
+@pytest.mark.parametrize("fixture_id", ALL_IDS)
 def test_committed_bytes_carry_no_default_redaction_match_and_no_path(fixture_id):
     path = gallery.get(fixture_id).tape
     text = path.read_text(encoding="utf-8")
@@ -264,7 +360,7 @@ def first_line_mismatch(committed: list, regenerated: list):
     return f"{where}: present only in the {longer_side} tape -> {extra[:160]!r}"
 
 
-@pytest.mark.parametrize("fixture_id", ["deathloop", "repaired"])
+@pytest.mark.parametrize("fixture_id", ALL_IDS)
 def test_the_generator_reproduces_every_committed_line(fixture_id, tape_dir):
     """Regenerate with tools/gen_fixtures.py and compare the committed tape line by line.
 
