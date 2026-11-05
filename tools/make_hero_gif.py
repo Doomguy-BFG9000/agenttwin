@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 HERO = ROOT / "build" / "hero"
 FRAMES = HERO / "frames"
-ASSET = ROOT / "assets" / "hero.gif"
+ASSET = ROOT / "assets" / "hero-full.gif"
 
 EDGE = ("--headless=new", "--window-size=1280,860", "--force-device-scale-factor=1",
         "--disable-gpu", "--hide-scrollbars", "--lang=en-US")
