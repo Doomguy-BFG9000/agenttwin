@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agenttwin"
-version = "0.1.0"
+version = "0.1.1"
 description = "Frozen-replay for LLM agents: record one JSONL tape, replay it deterministically, diff what changed."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,6 +30,7 @@ dependencies = []
 Homepage = "https://github.com/ravenkernel/agenttwin"
 Source = "https://github.com/ravenkernel/agenttwin"
 Issues = "https://github.com/ravenkernel/agenttwin/issues"
+Changelog = "https://github.com/ravenkernel/agenttwin/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 yaml = ["pyyaml"]

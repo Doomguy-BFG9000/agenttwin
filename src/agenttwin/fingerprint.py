@@ -12,7 +12,9 @@ from typing import Any
 
 __all__ = ["AGENTTWIN_VERSION", "FATAL_FIELDS", "capture", "compare", "is_fatal"]
 
-_DEFAULT_VERSION = "0.1.0"
+# Only used if the package cannot import itself; the real value is __version__,
+# so there is exactly one place to bump.
+_DEFAULT_VERSION = "0.0.0"
 
 AGENTTWIN_VERSION: str = _DEFAULT_VERSION
 try:
