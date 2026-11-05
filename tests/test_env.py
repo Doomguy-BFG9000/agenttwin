@@ -246,7 +246,11 @@ def test_a_known_different_model_raises_fingerprint_drift(tape_dir):
 def test_python_platform_and_deps_drift_is_recorded_not_raised(tape_dir):
     path = tape_dir / "soft.jsonl"
     fingerprint = dict(capture())
-    fingerprint.update({"python": "3.9", "platform": "linux", "deps": {"vendor-sdk": "1.0"}})
+    # A value no runner can actually report: "linux" here would silently match
+    # the real sys.platform on the ubuntu jobs and drop the platform difference.
+    fingerprint.update(
+        {"python": "3.9", "platform": "fixture-platform", "deps": {"vendor-sdk": "1.0"}}
+    )
     write_tape(path, fingerprint)
     session = Twin.load(path)
     fields = {item["field"] for item in session.fingerprint_diff}
