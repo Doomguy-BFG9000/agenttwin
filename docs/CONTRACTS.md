@@ -194,3 +194,8 @@ TraceDiff(baseline: Trace, current: Trace)
 16. **`capture()` 的 `python` 存 major.minor**（`3.12`），`compare` 双侧归一后再比。
 17. **本机测试环境事实**：workspace-write 沙箱下 pytest 的 `tmp_path` 不可用（`PermissionError: [WinError 5]`，路径 `%TEMP%\pytest-of-*`）。测试一律使用 `tests/conftest.py` 提供的 `tape_dir` fixture（根 `build/pytest-tmp`）。**禁止使用 `tmp_path`**。
 18. **`divergent` 字段**（见 §8）：仅 R-TERM 第 2 分支为 true；未分叉的回放必须为 false，否则「逐位一致」无法自证。
+19. **TapeMiss 之后 proxy 返回 `None`**：记 miss、游标**不回退也不跳过**，后续每次调用继续记 miss；不抛异常。理由：§3.4 第 3 条要求它不中断回放，而「跳过去找下一个同类事件」会让 diff 在两个不同时间点上对齐。
+20. **hash 基于脱敏前的请求/参数，preview 存脱敏后的值**（各截断 4096 字符）：`prompt_hash = sha256(canonical_json(request))`、`args_hash = sha256(canonical_json({"args": [...], "kwargs": {...}}))`，二者都在 Redactor 之前算；`prompt_preview` / `args_preview` 存脱敏后的可读副本。理由：脱敏后的值不稳定（策略一改 hash 全变），而 preview 绝不能带 secret。
+21. **`Twin.load` 只在 `model` 与 `agenttwin`(major.minor) 不符时抛 `FingerprintDrift`**；`python` / `platform` / `deps` / `prompt_hash` 的差异只进报告（`fingerprint_diff`），不抛。理由：§13 要求 3.10–3.13 CI 矩阵复用同一批 fixture，python 版本漂移若致命，跨版本回放这一整条承诺就不成立。（`fingerprint.is_fatal` 仍是纯函数，策略过滤在 `env.py`。）
+22. **`patch(args=...)` 会用 `{"args": [], "kwargs": <args>}` 重算 `args_hash`**：patch 改的是「tape 期待什么」，不只是展示层。
+23. **terminal state 规则**：`state` = 折叠后的 state_patch 状态；若 agent 返回 dict，则覆盖合并（返回值优先）。`state_hash = sha256_hex(canonical_json(state))`。录制侧抛异常时，先写 `error` 事件、再写 `outcome="error"` 的 terminal，然后把异常继续抛出。
