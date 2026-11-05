@@ -232,7 +232,7 @@ Python 3.10+, zero third-party dependencies at runtime: `pyproject.toml` declare
 
 ### Command line
 
-Once installed, `agenttwin` and `python -m agenttwin` are the same entry point (`agenttwin.cli:main`), with five subcommands: `record` / `replay` / `diff` / `doctor` / `gallery`. To see the two fixtures shipped with the repo, without recording a tape first:
+Once installed, `agenttwin` and `python -m agenttwin` are the same entry point (`agenttwin.cli:main`), with five subcommands: `record` / `replay` / `diff` / `doctor` / `gallery`. To see the ten fixtures shipped with the repo (five before/after pairs, one per assertion family), without recording a tape first:
 
 ```bash
 python -m agenttwin gallery list
@@ -244,6 +244,14 @@ Output (the second command prints the head of a report and its assertion table; 
 ```text
 deathloop  Checkout retry loop
 repaired  Checkout that stops on the failed observation
+cleanup  Cleanup that deletes build/ with rm -rf
+cleanup_guarded  Cleanup that leaves the tree alone
+write_first  Release note written before the search
+search_first  Release note that cites what it found
+partial_receipt  Receipt without the charged total
+full_receipt  Receipt that carries the total it charged
+double_shipping  Order that pays shipping twice
+correct_shipping  Order priced once
 
 # AgentTwin report: gallery-deathloop
 
@@ -259,12 +267,12 @@ strict: no
 | never_calls(shell, args_contains='rm -rf') | PASS | no call of shell matches | - |
 ```
 
-`gallery run deathloop` exits 1 and `gallery run repaired` exits 0: same assertion set, and the only difference is whether that agent repeats the same tool call a thirteenth time. `python -m agenttwin <command> --help` shows the arguments of each command.
+`gallery run deathloop` exits 1 and `gallery run repaired` exits 0: same assertion set, and the only difference is whether that agent repeats the same tool call a thirteenth time. The other four pairs are the same shape: `cleanup` / `cleanup_guarded` (`never_calls`), `write_first` / `search_first` (`call_order`), `partial_receipt` / `full_receipt` (`output_schema`), `double_shipping` / `correct_shipping` (`state_invariant`). `python -m agenttwin <command> --help` shows the arguments of each command.
 
 ## Status
 
 0.1.0 is the version in the repository, not a release number: nothing has been published yet.
 
-- Done and tested: the record/replay core (`Twin.record` / `Twin.load`), drift detection, 9 assertion factories plus the combinators and YAML loading, `TraceDiff`, `Report` (JSON / Markdown / single-file HTML), the five `agenttwin` subcommands, the openai-compatible adapter (duck-typed, no SDK import), and the two bundled fixtures.
+- Done and tested: the record/replay core (`Twin.record` / `Twin.load`), drift detection, 9 assertion factories plus the combinators and YAML loading, `TraceDiff`, `Report` (JSON / Markdown / single-file HTML), the five `agenttwin` subcommands, the openai-compatible adapter (duck-typed, no SDK import), and the ten bundled fixtures (five before/after pairs).
 - Not verified: `.github/workflows/ci.yml` has only been parsed as YAML locally and has never actually run on GitHub; this machine's sandbox cannot install packages, so every example runs with `PYTHONPATH=src`, and the `agenttwin` console script is declared in `pyproject.toml` but has never actually been executed (`python -m agenttwin` has).
 - Not done yet: the PyPI release, a coverage gate, any hosted service or dashboard.
