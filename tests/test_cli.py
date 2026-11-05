@@ -22,6 +22,7 @@ import pytest
 
 import agenttwin
 from agenttwin import Twin, cli
+from agenttwin.diff import TraceDiff
 from agenttwin.trace import Event, Trace
 
 # --- fixtures and controllers ----------------------------------------------
@@ -320,6 +321,44 @@ def test_replay_maps_a_drift_to_two(tape_dir, agents, capsys):
 
 
 # --- diff -------------------------------------------------------------------
+
+@pytest.mark.parametrize("destination", ["file", "stdout"])
+@pytest.mark.parametrize("shorter", [False, True])
+def test_diff_json_matches_library_and_retains_exit_code(tape_dir, capsys, destination, shorter):
+    baseline = record_tape(tape_dir / "base.jsonl")
+    trace = Trace.load(baseline)
+    current = tape_dir / "current.jsonl"
+    Trace(header=trace.header, events=trace.events[:1] if shorter else trace.events).save(current)
+    expected = TraceDiff(trace, Trace.load(current)).to_dict()
+    expected["counts"] = {"same": 1 if shorter else 2, "changed": 0, "added": 0, "removed": int(shorter)}
+    output = tape_dir / "diff.json"
+    args = ["diff", str(baseline), str(current), "--json"]
+    if destination == "file":
+        args.append(str(output))
+    assert cli.main(args) == int(shorter)
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    text = output.read_text(encoding="utf-8") if destination == "file" else captured.out
+    assert json.loads(text) == expected
+    if destination == "stdout":
+        assert not output.exists()
+
+
+def test_diff_json_keeps_invalid_tape_exit_code(tape_dir, capsys):
+    good = record_tape(tape_dir / "valid.jsonl")
+    bad = tape_dir / "invalid.jsonl"
+    bad.write_text("not JSONL", encoding="utf-8")
+    output = tape_dir / "diff.json"
+    assert cli.main(["diff", str(good), str(bad), "--json", str(output)]) == 2
+    assert not output.exists()
+    assert "not a tape" in capsys.readouterr().err
+
+
+def test_diff_json_reports_output_errors(tape_dir, capsys):
+    tape = record_tape(tape_dir / "valid.jsonl")
+    target = tape_dir / "missing" / "diff.json"
+    assert cli.main(["diff", str(tape), str(tape), "--json", str(target)]) == 3
+    assert "cannot write JSON" in capsys.readouterr().err
 
 
 def test_diff_of_a_tape_with_itself_exits_zero(tape_dir, capsys):
