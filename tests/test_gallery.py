@@ -1,4 +1,4 @@
-"""The gallery story end to end: five pairs, one assertion set per pair, FAIL then PASS.
+"""The gallery story end to end: six pairs, one assertion set per pair, FAIL then PASS.
 
 Design doc section 8 makes the gallery the first flagship artefact, so these tests
 are not smoke tests: they judge each committed tape with the very controller that
@@ -24,6 +24,7 @@ from pathlib import Path
 import pytest
 
 from agenttwin import Twin, gallery
+from agenttwin.drift import PromptDrift
 from agenttwin.redact import DEFAULT_PATTERNS
 from agenttwin.trace import Trace, canonical_json
 
@@ -50,6 +51,8 @@ ALL_IDS = [
     "full_receipt",
     "double_shipping",
     "correct_shipping",
+    "late_stop",
+    "early_stop",
 ]
 
 # Every pair is one controller under two policies, so the pair must be judged by
@@ -60,6 +63,7 @@ PAIRS = [
     ("write_first", "search_first"),
     ("partial_receipt", "full_receipt"),
     ("double_shipping", "correct_shipping"),
+    ("late_stop", "early_stop"),
 ]
 
 # The verdict each tape publishes: exit code and the assertions it is meant to fail.
@@ -75,6 +79,8 @@ GALLERY_CLAIMS = {
     "full_receipt": (0, set()),
     "double_shipping": (1, {"state_invariant(/total)"}),
     "correct_shipping": (0, set()),
+    "late_stop": (1, {"terminates_within(n=9)"}),
+    "early_stop": (0, set()),
 }
 
 
@@ -264,6 +270,56 @@ def test_repaired_passes_the_identical_assertions_without_touching_the_shell():
         for event in report.trace.events
         if event.kind == "tool_call"
     )
+
+
+@pytest.mark.parametrize(
+    "fixture_id, checks, terminal_seq, status",
+    [("late_stop", 3, 9, "gave_up"), ("early_stop", 1, 3, "complete")],
+)
+def test_termination_pair_stops_at_the_published_event_bound(
+    fixture_id, checks, terminal_seq, status
+):
+    report = judged(gallery.get(fixture_id))
+    polls = [event for event in report.trace.events if event.kind == "tool_call"]
+    assert len(polls) == checks
+    assert all(event.actor == "export_status" for event in polls)
+    terminal = report.trace.events[-1]
+    assert terminal.kind == "terminal"
+    assert terminal.seq == terminal_seq
+    assert terminal.payload["state"] == {"status": status, "checks": checks}
+    result = next(row for row in report.results if row.name == "terminates_within(n=9)")
+    assert result.passed is (terminal_seq < 9)
+    assert result.first_offense_seq == (terminal_seq if terminal_seq >= 9 else None)
+
+
+@pytest.mark.parametrize("fixture_id", ["late_stop", "early_stop"])
+def test_termination_controller_changes_only_its_stop_policy(fixture_id):
+    fixture = gallery.get(fixture_id)
+    for stop_on_done, checks, status in [(False, 3, "gave_up"), (True, 1, "complete")]:
+        result = fixture.agent(
+            fixture.llm,
+            fixture.make_tools(),
+            policy={"max_checks": 3, "stop_on_done": stop_on_done},
+        )
+        assert result == {"status": status, "checks": checks}
+
+
+@pytest.mark.parametrize("fixture_id", ["late_stop", "early_stop"])
+def test_termination_pair_prompt_drift_is_a_hard_failure(fixture_id, monkeypatch):
+    monkeypatch.setattr(gallery, "EXPORT_GOAL", "export a different table")
+    with pytest.raises(PromptDrift) as caught:
+        judged(gallery.get(fixture_id))
+    assert caught.value.seq == 2
+
+
+@pytest.mark.parametrize("fixture_id, expected_exit", [("late_stop", 1), ("early_stop", 0)])
+def test_termination_pair_cli_returns_the_published_verdict(fixture_id, expected_exit, capsys):
+    from agenttwin import cli
+
+    assert cli.main(["gallery", "run", fixture_id]) == expected_exit
+    output = capsys.readouterr().out
+    assert "terminates_within(n=9)" in output
+    assert f"exit code {expected_exit}" in output
 
 
 @pytest.mark.parametrize("fixture_id", ALL_IDS)
